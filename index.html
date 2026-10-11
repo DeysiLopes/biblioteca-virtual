@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minha Biblioteca</title>
+<meta property="og:title" content="Minha Biblioteca">
+<meta property="og:description" content="Estante digital interativa da minha coleção de leituras.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Karla:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: oklch(0.905 0.014 90);
+    --bg2: oklch(0.86 0.02 88);
+    --paper: oklch(0.97 0.008 96);
+    --ink: oklch(0.30 0.02 60);
+    --muted: oklch(0.50 0.02 58);
+    --accent: oklch(0.55 0.09 55);
+    --accent2: oklch(0.60 0.12 45);
+    --wood: oklch(0.52 0.06 55);
+    --wood-light: oklch(0.63 0.05 60);
+    --shelf-h: 14px;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    font-family:"Karla",system-ui,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, oklch(0.94 0.03 85 / 0.6), transparent 60%),
+      linear-gradient(180deg,var(--bg), var(--bg2));
+    background-attachment: fixed;
+    min-height:100vh;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.5; mix-blend-mode:overlay; z-index:0;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/><feColorMatrix type="saturate" values="0"/></filter><rect width="120" height="120" filter="url(%23n)" opacity="0.35"/></svg>');
+  }
+  header{ position:relative; z-index:1; padding:42px 28px 10px; text-align:center; }
+  .eyebrow{
+    font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.28em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  h1{
+    font-family:"Cormorant Garamond",serif; font-weight:500; font-style:italic;
+    font-size:clamp(34px,6vw,60px); line-height:1.05; margin:10px 0 6px; color:var(--ink);
+  }
+  .count{ font-family:"Space Mono",monospace; font-size:12px; color:var(--muted); }
+  .filters{
+    position:relative; z-index:2; display:flex; gap:8px; overflow-x:auto; padding:18px 20px 8px;
+    max-width:1100px; margin:0 auto; scrollbar-width:none; justify-content:center; flex-wrap:wrap;
+  }
+  .filters::-webkit-scrollbar{ display:none; }
+  .pill{
+    font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.06em;
+    padding:6px 12px; border-radius:999px; border:1px solid color-mix(in oklch, var(--ink) 18%, transparent);
+    background:color-mix(in oklch, var(--paper) 60%, transparent); color:var(--ink); cursor:pointer;
+    white-space:nowrap; transition:all .18s ease; user-select:none;
+  }
+  .pill:hover{ transform:translateY(-1px); }
+  .pill.on{ background:var(--accent); border-color:var(--accent); color:oklch(0.985 0.005 95); }
+  main{ position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:18px 26px 80px; }
+  .shelf{
+    display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:center; gap:10px;
+    padding:26px 4px 0; margin-bottom:34px;
+  }
+  .book{ cursor:pointer; transition:transform .22s cubic-bezier(.22,1,.32,1); transform-origin:bottom center; }
+  .book:hover{ transform:translateY(-14px) rotate(-1.2deg) scale(1.06); z-index:5; }
+  .cover-w{
+    width:152px; height:225px; border-radius:3px 8px 8px 3px; overflow:hidden; position:relative;
+    box-shadow:0 10px 22px -10px oklch(0.20 0.03 50 / 0.55), inset 4px 0 8px -4px oklch(0 0 0 / 0.35);
+    background:var(--paper);
+  }
+  .cover-w img{ width:100%; height:100%; object-fit:cover; display:block; position:relative; z-index:1; }
+  .fallback{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:10px; font-family:"Cormorant Garamond",serif; font-size:17px; font-weight:500; color:oklch(0.2 0 0 / 0.85);
+    text-shadow:0 1px 0 oklch(1 0 0 / .25);
+  }
+  .book-caption{
+    margin-top:8px; text-align:center; font-size:11px; line-height:1.25; color:var(--muted);
+    font-family:"Karla",sans-serif; max-width:152px; overflow:hidden; display:-webkit-box;
+    -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  }
+  .shelfrail{
+    position:relative; height:var(--shelf-h); border-radius:6px; margin-top:-6px;
+    background:linear-gradient(180deg,var(--wood-light),var(--wood));
+    box-shadow:0 14px 22px -12px oklch(0.25 0.03 50 / 0.6), inset 0 2px 2px oklch(1 0 0 / .3), inset 0 -3px 5px oklch(0 0 0 / .25);
+  }
+  .empty{ text-align:center; padding:50px 0; color:var(--muted); font-family:"Cormorant Garamond",serif; font-size:22px; font-style:italic; }
+  .modal{
+    position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+    background:oklch(0.25 0.02 40 / 0.55); backdrop-filter:blur(8px); padding:20px;
+  }
+  .modal.open{ display:flex; }
+  .card{
+    background:var(--paper); border-radius:16px; width:min(760px,96vw); max-height:88vh; overflow:auto;
+    display:grid; grid-template-columns:minmax(160px,360px) 1fr; gap:26px; padding:26px;
+    box-shadow:0 40px 80px -30px oklch(0.15 0.02 40 / 0.7);
+    animation:rise .4s cubic-bezier(.22,1,.32,1);
+  }
+  @keyframes rise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+  .card .cover{ position:relative; width:100%; aspect-ratio:2/3; border-radius:4px 10px 10px 4px; overflow:hidden; box-shadow:0 14px 30px -14px oklch(0.2 0.03 50 / 0.6), inset 4px 0 8px -4px oklch(0 0 0 / .35); background:var(--paper); }
+  .card .cover img{ width:100%; height:100%; object-fit:cover; position:relative; z-index:1; }
+  .fallback-lg{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px;
+    font-family:"Cormorant Garamond",serif; font-size:26px; font-weight:500; color:oklch(0.2 0 0 / .85);
+  }
+  .meta h2{ font-family:"Cormorant Garamond",serif; font-weight:500; font-size:clamp(24px,4vw,36px); line-height:1.1; }
+  .meta .author{ font-style:italic; color:var(--muted); margin-top:4px; font-size:16px; }
+  .badges{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .badge{
+    font-family:"Space Mono",monospace; font-size:10px; letter-spacing:.05em; text-transform:uppercase;
+    padding:4px 9px; border-radius:999px; border:1px solid color-mix(in oklch, var(--ink) 20%, transparent);
+    color:var(--ink);
+  }
+  .badge.estudo{ background:oklch(0.88 0.12 65 / .35); border-color:oklch(0.7 0.08 55); }
+  .badge.lazer{ background:oklch(0.9 0.08 20 / .35); }
+  .stars{ margin-top:14px; font-size:20px; letter-spacing:2px; }
+  .stars .none{ font-family:"Space Mono",monospace; font-size:11px; color:var(--muted); }
+  .progress{ margin-top:12px; }
+  .progress .bar{ height:8px; border-radius:99px; background:color-mix(in oklch, var(--ink) 12%, transparent); overflow:hidden; }
+  .progress .fill{ height:100%; border-radius:99px; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+  .progress .lbl{ font-family:"Space Mono",monospace; font-size:10px; color:var(--muted); margin-bottom:5px; }
+  .review{ margin-top:16px; }
+  .review h3{ font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .review p{ font-size:14px; line-height:1.55; white-space:pre-wrap; color:var(--ink); }
+  .review .no{ font-style:italic; color:var(--muted); }
+  .closeBtn{
+    position:sticky; float:right; top:0; font-family:"Space Mono",monospace; font-size:12px;
+    border:1px solid color-mix(in oklch, var(--ink) 30%, transparent); border-radius:999px; padding:6px 12px;
+    color:var(--ink); cursor:pointer; background:transparent;
+  }
+  .closeBtn:hover{ background:var(--ink); color:var(--paper); }
+  footer{ position:relative; z-index:1; text-align:center; font-family:"Space Mono",monospace; font-size:10px; letter-spacing:.15em; color:var(--muted); padding:0 0 30px; text-transform:uppercase; }
+  @media (max-width:640px){
+    .card{ grid-template-columns:1fr; max-height:92vh; }
+    .cover-w{ width:118px; height:176px; }
+    .book-caption{ max-width:118px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">estante digital pessoal</div>
+  <h1>Minha Biblioteca</h1>
+  <div class="count" id="count">carregando…</div>
+  <div class="filters" id="filters"></div>
+</header>
+
+<main id="main"></main>
+
+<footer>clique em uma capa para ver o que você achou</footer>
+
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="card" id="card"></div>
+</div>
+
+<script>
+let BOOKS = [];
+
+const FALLBACK_HUES = [32, 258, 185, 20, 330, 158, 95, 48];
+function hueFor(title) {
+  let h = 0; for (const c of (title || "x")) h = (h * 31 + c.codePointAt(0)) >>> 0;
+  return FALLBACK_HUES[h % FALLBACK_HUES.length];
+}
+function fallbackCover(title, big) {
+  const h = hueFor(title);
+  const initials = (title || "?").split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase();
+  return `<div class="${big ? "fallback-lg" : "fallback"}" style="background:linear-gradient(160deg, hsl(${h} 45% 78%), hsl(${h} 45% 58%))">${initials}</div>`;
+}
+
+function coverHTML(b, big) {
+  const fallback = big ? fallbackCover(b.title, true) : fallbackCover(b.title);
+  const img = b.cover
+    ? `<img loading="lazy" src="${b.cover}" alt="${b.title.replace(/"/g, "&quot;")}" onerror="this.style.display='none'">`
+    : "";
+  return big
+    ? `<div class="cover">${fallback}${img}</div>`
+    : `<div class="cover-w">${fallback}${img}</div>`;
+}
+
+function starsHTML(b) {
+  if (b.nota && b.nota > 0) return `<div class="stars">${"★".repeat(Math.min(5, Math.round(b.nota))) + "<span class='dim' style='opacity:.3'>" + "★".repeat(Math.max(0, 5 - Math.min(5, Math.round(b.nota)))) + "</span>"}</div>`;
+  return `<div class="stars"><span class="none">não avaliado</span></div>`;
+}
+
+function firstOf(x) { return x && x[0]; }
+
+function buildShelf() {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const visible = BOOKS.filter(matchFilters);
+  document.getElementById("count").textContent = `${visible.length} de ${BOOKS.length} volumes`;
+  if (!visible.length) { main.innerHTML = `<div class="empty">nenhum livro encontrado…</div>`; return; }
+
+  const CHUNK = 6;
+  for (let i = 0; i < visible.length; i += CHUNK) {
+    const chunk = visible.slice(i, i + CHUNK);
+    const shelf = document.createElement("div");
+    shelf.className = "shelf";
+    chunk.forEach((b, j) => {
+      const book = document.createElement("div");
+      book.className = "book";
+      book.style.transitionDelay = (j * 12) + "ms";
+      book.innerHTML = coverHTML(b, false) + `<div class="book-caption">${b.title}</div>`;
+      book.addEventListener("click", () => openBook(b));
+      shelf.appendChild(book);
+    });
+    const rail = document.createElement("div");
+    rail.className = "shelfrail";
+    main.appendChild(shelf);
+    main.appendChild(rail);
+  }
+}
+
+function openBook(b) {
+  const card = document.getElementById("card");
+  const badges = [];
+  if (b.status) badges.push(`<span class="badge">${b.status}</span>`);
+  if (b.genero) badges.push(`<span class="badge">${b.genero}</span>`);
+  if (b.formato) badges.push(`<span class="badge">${b.formato}</span>`);
+  if (b.idioma) badges.push(`<span class="badge">${b.idioma}</span>`);
+  if (b.tipo) badges.push(`<span class="badge ${b.tipo.toLowerCase()}">${b.tipo}</span>`);
+  if (b.ano) badges.push(`<span class="badge">${b.ano}</span>`);
+
+  let progress = "";
+  if (b.status === "Lendo" || (b.progresso && b.progresso > 0)) {
+    progress = `
+      <div class="progress">
+        <div class="lbl">progresso ${b.progresso != null ? b.progresso + "%" : ""}</div>
+        <div class="bar"><div class="fill" style="width:${Math.min(100, b.progresso || 0)}%"></div></div>
+      </div>`;
+  }
+
+  const review = [];
+  if (b.comentarios) review.push(`<h3>comentários</h3><p>${b.comentarios.replace(/</g, "&lt;")}</p>`);
+  if (b.resenha) review.push(`<h3>resenha</h3><p>${b.resenha.replace(/</g, "&lt;")}</p>`);
+  const reviewBlock = review.length
+    ? `<div class="review">${review.join("")}</div>`
+    : `<div class="review"><p class="no">ainda não registrei o que achei deste livro.</p></div>`;
+
+  card.innerHTML = `
+    <button class="closeBtn" id="close">fechar ✕</button>
+    ${coverHTML(b, true)}
+    <div class="meta">
+      <h2>${b.title.replace(/</g, "&lt;")}</h2>
+      <div class="author">${b.author || "autor desconhecido"}</div>
+      <div class="badges">${badges.join("")}</div>
+      ${starsHTML(b)}
+      ${progress}
+      ${reviewBlock}
+    </div>`;
+  document.getElementById("modal").classList.add("open");
+  document.getElementById("close").addEventListener("click", closeBook);
+  document.body.style.overflow = "hidden";
+}
+function closeBook() {
+  document.getElementById("modal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+document.getElementById("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeBook(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
+
+let activeFilters = new Set();
+function buildFilters() {
+  const genres = [...new Set(BOOKS.map(b => b.genero).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt"));
+  const statuses = ["Quero ler", "Lendo", "Lido", "Abandonado"];
+  const wrap = document.getElementById("filters");
+  wrap.innerHTML = "";
+  const mk = (label) => {
+    const p = document.createElement("button");
+    p.className = "pill"; p.textContent = label;
+    p.addEventListener("click", () => {
+      if (activeFilters.has(label)) { activeFilters.delete(label); p.classList.remove("on"); }
+      else { activeFilters.add(label); p.classList.add("on"); }
+      buildShelf();
+    });
+    return p;
+  };
+  if (statuses.length) statuses.forEach(s => wrap.appendChild(mk(s)));
+  [...genres].forEach(g => wrap.appendChild(mk(g)));
+}
+function matchFilters(b) {
+  if (!activeFilters.size) return true;
+  return [...activeFilters].every(f => b.status === f || b.genero === f);
+}
+
+fetch("books.json", { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => { BOOKS = data; buildFilters(); buildShelf(); })
+  .catch(() => {
+    document.getElementById("count").textContent = "não consegui carregar os livros";
+    document.getElementById("main").innerHTML = `<div class="empty">Não consegui carregar books.json.</div>`;
+  });
+</script>
+</body>
+</html>
