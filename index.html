@@ -319,6 +319,7 @@
   <div class="sheet">
     <h2>🔄 Sincronização</h2>
     <p class="hint">O app guarda diário e notas num arquivo <b>data/sync.json</b> deste repositório GitHub. Assim celular, tablet e o widget online compartilham tudo.</p>
+    <p class="mini">⚠️ <b>Importante:</b> o token precisa ser salvo em <b>cada aparelho/aba</b> onde você editar a biblioteca — cada um envia as próprias mudanças e baixa as dos outros. No primeiro sincronismo o arquivo <b>data/sync.json</b> é criado no repositório.</p>
     <div class="syncstat" id="syncStat">ainda não sincronizado</div>
     <div class="field"><label>Token do GitHub (fine-grained)</label>
       <div style="display:flex;gap:8px">
@@ -442,10 +443,10 @@ function ghHeaders(){
   if(META.githubToken) h["Authorization"]="Bearer "+META.githubToken;
   return h;
 }
-async function ghApi(method, url, bodyObj){
+async function ghApi(method, url, bodyObj, opts){
   const headers=Object.assign({}, ghHeaders());
   if(bodyObj) headers["Content-Type"]="application/json";
-  const res=await fetch(url,{ method, headers, body: bodyObj?JSON.stringify(bodyObj):undefined });
+  const res=await fetch(url,{ method, headers, body: bodyObj?JSON.stringify(bodyObj):undefined, keepalive: !!opts?.keepalive });
   const txt=await res.text(); let j; try{ j=JSON.parse(txt); }catch(e){ j={message:txt}; }
   if(!res.ok) throw Object.assign(new Error(j.message||("HTTP "+res.status)), {status:res.status});
   return j;
@@ -470,10 +471,10 @@ function encodeB64(str){
   bytes.forEach(b=>bin+=String.fromCharCode(b));
   return btoa(bin);
 }
-async function ghPut(sha, payload){
+async function ghPut(sha, payload, flush){
   const body={ message:"sync: "+new Date().toISOString(), content:encodeB64(JSON.stringify(payload)), branch:GIT.branch };
   if(sha) body.sha=sha;
-  return ghApi("PUT",`https://api.github.com/repos/${GIT.owner}/${GIT.repo}/contents/${GIT.path}`, body);
+  return ghApi("PUT",`https://api.github.com/repos/${GIT.owner}/${GIT.repo}/contents/${GIT.path}`, body, {keepalive:flush});
 }
 function pickOV(ov){
   const out={};
@@ -502,8 +503,8 @@ function mergePayload(a, b){
   }
   return { v:1, books, diary:[...byId.values()] };
 }
-async function pushSync(){
-  if(syncState.busy) return;
+async function pushSync(flush){
+  if(syncState.busy && !flush){ syncUi(); return; }
   syncState.busy=true; syncUi();
   try{
     let pushed=false;
@@ -512,16 +513,18 @@ async function pushSync(){
       const local=buildSyncPayload();
       const merged=mergePayload(payload, local);
       if(JSON.stringify(merged)===JSON.stringify(payload)) break;
-      try{ await ghPut(sha, merged); pushed=true; break; }
+      try{ await ghPut(sha, merged, flush); pushed=true; break; }
       catch(e){ if(e.status===409 && i<2){ continue; } throw e; }
     }
     syncState.last=true; syncState.error=null;
     META.lastSyncAt=Date.now(); await putOf("meta",{k:"lastSyncAt",v:META.lastSyncAt});
-    if(pushed) toast("Sincronizado ✓");
+    if(pushed && !flush) toast("Sincronizado ✓");
   }catch(e){
     const m=String(e.message||e);
-    syncState.error = m.includes("Bad credentials")||m.includes("Not Found")||m.includes("Forbidden") ? "token inválido ou sem permissão de escrita" : (e.message||"erro ao sincronizar");
+    const msg = m.includes("Bad credentials")||m.includes("Not Found")||m.includes("Forbidden")||m.includes("401")||m.includes("403")||m.includes("404") ? "token inválido ou sem permissão de escrita (Contents → Read and write)" : (e.message||"erro ao sincronizar");
+    syncState.error = msg;
     syncState.last=false;
+    if(!flush) toast("⚠ "+msg);
   }finally{ syncState.busy=false; syncUi(); }
 }
 async function applyRemote(remote){
@@ -565,7 +568,7 @@ async function pullSync(){
   if(remote) await applyRemote(remote);
 }
 function syncStatBusy(){ syncState.busy=true; syncUi(); }
-function markDirty(){ syncUi(); if(!META.githubToken) return; clearTimeout(syncTimer); syncUi(); syncTimer=setTimeout(()=>pushSync(),1200); }
+function markDirty(){ syncUi(); if(!META.githubToken) return; clearTimeout(syncTimer); syncUi(); syncTimer=setTimeout(()=>pushSync(),800); }
 
 /* ---------- render estante ---------- */
 function visibleBooks(){
@@ -784,7 +787,7 @@ async function saveBook(p,id){
   const i=BOOKS.findIndex(x=>x.id===id); if(i>=0) BOOKS[i]=next;
   renderFilters(); renderShelves();
   closeBook();
-  toast(delta>0 ? "Salvo! Registrado no diário ✓" : "Salvo ✓");
+  toast(META.githubToken ? (delta>0?"Salvo! Registrado no diário ✓":"Salvo ✓") : "Salvo só neste aparelho — configure 🔄 para sincronizar");
   markDirty();
 }
 
@@ -906,7 +909,7 @@ async function saveDiaryEntry(){
   }
   $("#dform").classList.remove("open");
   await loadData(); renderShelves(); renderDiary();
-  toast("Registrado! 📖");
+  toast(META.githubToken ? "Registrado! 📖" : "Registrado só neste aparelho — configure 🔄 para sincronizar");
   markDirty();
 }
 
@@ -1122,17 +1125,24 @@ async function init(){
     toast("Token salvo. Sincronizando…"); syncStatBusy();
     try{ await pullSync(); await pushSync(); }catch(e){}
     renderShelves(); renderDiary(); syncUi();
+    if(syncState.last) toast("Sincronizado ✓");
+    else toast("⚠ Falhou: "+ (syncState.error||"confira o token"));
   });
   $("#syncNow").addEventListener("click",async()=>{
     if(!META.githubToken){ toast("Salve o token primeiro."); return; }
     syncStatBusy();
     try{ await pullSync(); await pushSync(); }catch(e){}
-    renderShelves(); renderDiary(); syncUi(); toast("Sincronizado ✓");
+    renderShelves(); renderDiary(); syncUi();
+    if(syncState.last) toast("Sincronizado ✓");
+    else toast("⚠ Falhou: "+ (syncState.error||"confira o token"));
   });
   document.addEventListener("visibilitychange",()=>{
     if(document.visibilityState==="visible" && lastTab){ pullSync().then(()=>{ if(META.githubToken&&!syncState.busy){ syncUi(); } renderShelves(); renderDiary(); }); }
   });
   window.addEventListener("online",()=>{ if(META.githubToken) pushSync(); });
+  window.addEventListener("pagehide",()=>{ if(META.githubToken && navigator.onLine) pushSync(true); });
+  window.addEventListener("beforeunload",()=>{ if(META.githubToken && navigator.onLine) pushSync(true); });
+  window.addEventListener("focus",()=>{ if(META.githubToken && document.visibilityState==="visible" && !syncState.busy){ pullSync().then(()=>{ renderShelves(); renderDiary(); syncUi(); }); } });
 }
 
 init();
