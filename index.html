@@ -529,10 +529,23 @@ async function pushSync(flush){
     META.lastSyncAt=Date.now(); await putOf("meta",{k:"lastSyncAt",v:META.lastSyncAt});
     if(pushed && !flush) toast("Sincronizado ✓");
   }catch(e){
-    const m=String(e.message||e);
-    const msg = m.includes("Bad credentials")||m.includes("Not Found")||m.includes("Forbidden")||m.includes("401")||m.includes("403")||m.includes("404") ? "token inválido ou sem permissão de escrita (Contents → Read and write)" : (e.message||"erro ao sincronizar");
-    syncState.error = msg;
+    const status=e&&e.status;
+    const m=String(e&&(e.message||e)).toLowerCase();
+    let msg;
+    if(m.includes("demorou demais") && e.timed) msg=e.message;
+    else if(status===0 || m.includes("network") || m.includes("neterr") || m.includes("enotfound") || m.includes("failed to fetch") || m.includes("typeerror") || m.includes("fetch"))
+      msg="não consegui falar com o GitHub (rede ou API indisponível) — tente de novo em instantes";
+    else if(m.includes("bad credentials")||m.includes("401"))
+      msg="token inválido — recrie um token e cole de novo";
+    else if(m.includes("resource not accessible")||m.includes("forbidden")||m.includes("403"))
+      msg="token sem permissão de escrita — no GitHub marque Contents → Read and write";
+    else if(m.includes("not found")||m.includes("404"))
+      msg="token sem acesso à leitura — selecione o repositório biblioteca-virtual";
+    else msg = (e&&e.message)||"erro ao sincronizar";
+    syncState.error=msg;
     syncState.last=false;
+    try{ localStorage.setItem("bib-syncerr", msg); }catch(_){}
+    try{ console.error("sync:", e); }catch(_){}
     if(!flush) toast("⚠ "+msg);
   }finally{ syncState.busy=false; syncUi(); }
 }
@@ -1132,18 +1145,22 @@ async function init(){
     $("#syncform").classList.remove("open");
     if(!t){ toast("Token removido — sem sincronização."); syncUi(); return; }
     toast("Token salvo. Sincronizando…"); syncStatBusy();
-    try{ await pullSync(); await pushSync(); }catch(e){}
+    let err=null;
+    try{ await pullSync(); await pushSync(); }catch(e){ err=e; }
     renderShelves(); renderDiary(); syncUi();
-    if(syncState.last) toast("Sincronizado ✓");
-    else toast("⚠ Falhou: "+ (syncState.error||"confira o token"));
+    toast(syncState.last
+      ? "Sincronizado ✓"
+      : "⚠ "+(syncState.error||(err&&(err.message||err))||"não consegui sincronizar — tente de novo em instantes"));
   });
   $("#syncNow").addEventListener("click",async()=>{
     if(!META.githubToken){ toast("Salve o token primeiro."); return; }
     syncStatBusy();
-    try{ await pullSync(); await pushSync(); }catch(e){}
+    let err=null;
+    try{ await pullSync(); await pushSync(); }catch(e){ err=e; }
     renderShelves(); renderDiary(); syncUi();
-    if(syncState.last) toast("Sincronizado ✓");
-    else toast("⚠ Falhou: "+ (syncState.error||"confira o token"));
+    toast(syncState.last
+      ? "Sincronizado ✓"
+      : "⚠ "+(syncState.error||(err&&(err.message||err))||"não consegui sincronizar — tente de novo em instantes"));
   });
   document.addEventListener("visibilitychange",()=>{
     if(document.visibilityState==="visible" && lastTab){ pullSync().then(()=>{ if(META.githubToken&&!syncState.busy){ syncUi(); } renderShelves(); renderDiary(); }); }
