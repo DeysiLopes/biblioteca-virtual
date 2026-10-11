@@ -1,4 +1,4 @@
-const VERSION = "bib-v16";
+const VERSION = "bib-v17";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -32,7 +32,7 @@ self.addEventListener("fetch", (e) => {
   // navegação (sempre funcionar offline)
   if (e.request.mode === "navigate") {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: "reload" })
         .then((r) => {
           caches.open(VERSION).then((c) => put(c, "./index.html", r));
           return r;
@@ -45,7 +45,7 @@ self.addEventListener("fetch", (e) => {
   // catálogo: rede primeiro, cache como fallback
   if (url.pathname.endsWith("/books.json")) {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: "reload" })
         .then((r) => {
           caches.open(VERSION).then((c) => put(c, e.request, r));
           return r;
@@ -86,6 +86,7 @@ self.addEventListener("fetch", (e) => {
 self.addEventListener("message", (e) => {
   const d = e.data;
   if (!d) return;
+  if (d.type === "skipWaiting") { self.skipWaiting(); return; }
   if (d.type === "notify") {
     self.registration.showNotification(d.title || "Minha Biblioteca", {
       body: d.body || "",

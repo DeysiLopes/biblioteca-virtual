@@ -1448,9 +1448,25 @@ async function exportBackup(){
 
 /* ---------- PWA / notificações ---------- */
 async function registerSW(){
-  if("serviceWorker" in navigator){
-    try{ await navigator.serviceWorker.register("sw.js"); }catch(e){ console.warn(e); }
-  }
+  if(!("serviceWorker" in navigator)) return;
+  try{
+    const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+    reg.update().catch(()=>{});
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+      if(!hadController || refreshed) return;
+      refreshed = true;
+      location.reload();
+    });
+    reg.addEventListener("updatefound", ()=>{
+      const nw = reg.installing;
+      if(!nw) return;
+      nw.addEventListener("statechange", ()=>{
+        if(nw.state==="installed" && navigator.serviceWorker.controller) nw.postMessage({ type:"skipWaiting" });
+      });
+    });
+  }catch(e){ console.warn(e); }
 }
 function notify(msg, title){
   if(!("Notification" in window) || Notification.permission!=="granted") return;
