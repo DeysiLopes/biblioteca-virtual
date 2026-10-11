@@ -716,7 +716,7 @@ function openBook(id, rect){
   const fly=$("#fly",m);
   const fb=fallback(b.title);
   const iw=innerWidth, ih=innerHeight, isMobile=iw<760;
-  const ar = (rect&&rect.height>0) ? Math.min(0.9, Math.max(0.45, rect.width/rect.height)) : 0.62;
+  const ar = (rect&&rect.height>0) ? Math.min(0.78, Math.max(0.5, rect.width/rect.height)) : 0.66;
   let tw, th, left, top;
   if(isMobile){
     const sheetH=Math.min(ih, Math.max(Math.round(ih*0.62), 380));
@@ -1019,7 +1019,8 @@ function renderDiary(){
   wrap.innerHTML=html;
   wrap.querySelectorAll(".nbook").forEach(n=>n.addEventListener("click",()=>{
     const b=BOOKS.find(x=>x.id===n.dataset.id); if(!b) return;
-    openBook(b.id, n.getBoundingClientRect());
+    const el=n.querySelector("img,.fbmini")||n;
+    openBook(b.id, el.getBoundingClientRect());
   }));
   renderWeek();
 }
