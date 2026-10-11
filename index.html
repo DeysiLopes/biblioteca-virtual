@@ -187,10 +187,11 @@
   .stars{ display:flex; gap:6px; }
   .stars span{ cursor:pointer; font-size:26px; line-height:1; color:oklch(0.3 0 0 / .18); transition:transform .15s, color .15s; }
   .stars span.on{ color:#e8a33d; transform:scale(1.12); }
-  input[type=number],select,textarea{
+  input[type=number],input[type=date],select,textarea{
     width:100%; font:600 14px "Nunito",sans-serif; color:var(--ink);
     background:oklch(0 0 0 / .24); border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; outline:none;
   }
+  input[type=date]{color-scheme:dark;}
   input::placeholder,textarea::placeholder{ color:oklch(0.8 0.02 60 / .55); }
   textarea{resize:vertical; min-height:54px;}
   input:focus,select:focus,textarea:focus{border-color:var(--accent);}
@@ -242,6 +243,18 @@
   .nbook .n{ border-left:2px solid var(--line); padding-left:8px; margin-top:6px; font-size:12.5px; color:var(--ink); white-space:pre-wrap; }
   .nbook .r{ background:oklch(0.35 0.02 30 / .35); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-top:6px; font-size:13px; color:var(--ink); white-space:pre-wrap; }
   .nbook .editl{ flex:none; align-self:center; font-size:11px; color:var(--accent); white-space:nowrap; }
+  .elog{ margin-top:7px; border-top:1px dashed var(--line); padding-top:6px; }
+  .erow{ font-size:12px; color:var(--ink2); line-height:1.55; }
+  .erow b{ color:var(--accent); }
+  .erow span{ color:var(--ink); }
+  .dedit{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-top:7px; }
+  .dedit .drow{ display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .dedit .ede{ flex:1; min-width:0; padding:6px 8px; }
+  .dedit .edp{ width:78px; flex:none; text-align:center; padding:6px 8px; }
+  .dedit .edn{ width:100%; min-height:44px; }
+  .dedit .edsave,.dedit .eddel{ padding:6px 9px; font-size:12px; white-space:nowrap; }
+  .addrow{ margin-top:8px; width:100%; background:oklch(0.35 0.02 30 / .28); border:1px dashed var(--line); color:var(--ink2); border-radius:10px; padding:9px; font:700 12.5px "Nunito",sans-serif; cursor:pointer; }
+  .addrow:hover{ color:var(--ink); border-color:var(--accent); }
   .section-label{ font:700 12.5px; color:var(--ink2); text-transform:uppercase; letter-spacing:.08em; margin:18px 0 2px; }
 
   /* form diário */
@@ -747,7 +760,7 @@ function renderPanel(b, id, m){
   panelBookId=id;
   const fb=fallback(b.title);
   const pc=pct(b);
-  const entries=DIARY.filter(d=>d.bookId===id).sort((a,b)=>b.id-a.id);
+  const entries=DIARY.filter(d=>d.bookId===id).sort((a,b)=>(b.ts||0)-(a.ts||0));
   p.innerHTML=`
     <div style="display:flex;justify-content:space-between;gap:8px"><h2>${b.title||"Sem título"}</h2><button class="mbtn ghost2" data-act="close">✕</button></div>
     <div class="sub">${b.author||""} · <span id="pMeta"></span></div>
@@ -775,13 +788,13 @@ function renderPanel(b, id, m){
     </div>
     <div class="field"><label>Comentários</label><textarea id="bComent" placeholder="O que achou?">${(b.comentarios||"").replace(/</g,"&lt;")}</textarea></div>
     <div class="field"><label>Resenha</label><textarea id="bResenha" placeholder="Escreva sua resenha..." style="min-height:76px">${(b.resenha||"").replace(/</g,"&lt;")}</textarea></div>
-    ${entries.length?`<div class="field"><label>Diário deste livro (${entries.length})</label>${entries.map(en=>`
-      <div class="entry" data-eid="${en.id}" title="Clique para editar"><div class="d"><span>${en.date} · ${en.pages} pág</span><button class="x" data-del="${en.id}">✕</button></div>
-      ${en.note?`<div style="margin-top:3px">${en.note.replace(/</g,"&lt;")}</div>`:""}</div>`).join("")}</div>`:""}
+    <div class="field"><label>Diário deste livro (${entries.length})</label>
+      <div id="bEntries">${entries.map(en=>entryRowHTML(en)).join("")}</div>
+      <button class="addrow" data-act="addEntry">＋ Adicionar registro</button>
+    </div>
     <div class="mfoot">
       <button class="mbtn ghost2" data-act="close">Fechar</button>
       <button class="mbtn primary" data-act="save" style="flex:1">Salvar</button>
-      <button class="mbtn ghost2" data-act="addEntry" title="Registrar leitura deste livro">＋</button>
     </div>`;
   $("#bTotal",p).addEventListener("change",()=>updatePerc(p));
   $("#bPagesLidas",p).addEventListener("input",()=>updatePerc(p));
@@ -792,17 +805,71 @@ function renderPanel(b, id, m){
     const act=btn.dataset.act;
     if(act==="close") closeBook();
     else if(act==="save") saveBook(p,id);
-    else if(act==="addEntry"){ openDiaryForm(id); }
+    else if(act==="addEntry"){ addEntryRow(id); }
   }));
-  p.querySelectorAll(".entry .x").forEach(x=>x.addEventListener("click",async(ev)=>{
-    ev.stopPropagation();
-    const did=String(x.dataset.del); await delOf("diary",did); await loadData(); renderDiary(); markDirty(); refreshPanel();
-  }));
-  p.querySelectorAll(".entry").forEach(en=>en.addEventListener("click",(ev)=>{
-    if(ev.target.closest(".x")) return;
-    const e=DIARY.find(d=>String(d.id)===en.dataset.eid);
-    if(e) openDiaryForm(id, e);
-  }));
+  p.querySelectorAll(".dedit").forEach(row=>bindEntryRow(row,id));
+}
+function entryRowHTML(en){
+  return `<div class="dedit" data-eid="${en.id}">
+    <div class="drow">
+      <input type="date" class="ede" value="${en.date||today()}">
+      <input type="number" class="edp" min="0" value="${en.pages||0}" placeholder="pág">
+      <button class="mbtn primary edsave">Salvar</button>
+      <button class="mbtn ghost2 eddel" data-del="${en.id}" title="Apagar">✕</button>
+    </div>
+    <textarea class="edn" placeholder="Anotações, citações, o que rolou...">${en.note?en.note.replace(/</g,"&lt;"):""}</textarea>
+  </div>`;
+}
+function bindEntryRow(row, bookId){
+  row.querySelector(".edsave").addEventListener("click",()=>saveEntryRow(row,bookId));
+  row.querySelector(".eddel").addEventListener("click",async()=>{
+    const did=String(row.dataset.eid||"");
+    if(did){ await delOf("diary",did); await loadData(); renderDiary(); markDirty(); refreshPanel(); }
+    else row.remove();
+  });
+}
+function addEntryRow(bookId){
+  const box=$("#bEntries"); if(!box) return;
+  const div=document.createElement("div");
+  div.className="dedit"; div.dataset.eid="";
+  div.innerHTML=`<div class="drow">
+    <input type="date" class="ede" value="${today()}">
+    <input type="number" class="edp" min="0" value="" placeholder="pág">
+    <button class="mbtn primary edsave">Salvar</button>
+    <button class="mbtn ghost2 eddel" title="Cancelar">✕</button>
+  </div>
+  <textarea class="edn" placeholder="Anotações, citações, o que rolou..."></textarea>`;
+  box.appendChild(div);
+  bindEntryRow(div,bookId);
+  div.querySelector(".edp").focus();
+}
+async function saveEntryRow(row, bookId){
+  const date=row.querySelector(".ede").value||today();
+  const pages=Math.max(0,+row.querySelector(".edp").value||0);
+  const note=row.querySelector(".edn").value.trim();
+  const eid=row.dataset.eid||"";
+  const old=eid?DIARY.find(d=>String(d.id)===eid):null;
+  if(!eid && !pages && !note){ row.remove(); return; }
+  const entry={ id:eid||uid(), bookId, date, pages, note, ts:Date.now() };
+  await putOf("diary", entry);
+  const b=BOOKS.find(x=>x.id===bookId);
+  if(b){
+    const delta=pages-(old?(+old.pages||0):0);
+    if(delta!==0){
+      const next=Object.assign({},b);
+      next.updatedAt=Date.now();
+      next.paginasLidas=Math.max(0,(b.paginasLidas||0)+delta);
+      if(next.paginas>0 && next.paginasLidas>=next.paginas) next.status="Lido";
+      else if(next.status==="Quero ler"&&pages>0) next.status="Lendo";
+      if(next.status==="Lendo"&&!next.inicio) next.inicio=today();
+      if(next.status==="Lido"&&!next.fim) next.fim=today();
+      await putOf("books", next);
+      const i=BOOKS.findIndex(x=>x.id===bookId); if(i>=0) BOOKS[i]=next;
+    }
+  }
+  await loadData(); renderDiary(); renderShelves(); refreshPanel();
+  toast(META.githubToken?"Registrado ✓":"Salvo só neste aparelho — configure 🔄");
+  markDirty();
 }
 function refreshPanel(){
   const m=$("#modal");
@@ -891,64 +958,48 @@ function renderDiary(){
     <div class="dbox"><div class="l">Total lido</div><div class="v">${tot} pág</div></div>
     <div class="dbox"><div class="l">Registros</div><div class="v">${DIARY.length}</div></div>`;
   const wrap=$("#diaryList"); wrap.innerHTML="";
+  const groups=new Map();
+  for(const en of DIARY){
+    const k=en.bookId||"?";
+    if(!groups.has(k)) groups.set(k,{ book:BOOKS.find(x=>x.id===k)||null, entries:[] });
+    groups.get(k).entries.push(en);
+  }
+  for(const b of BOOKS){
+    if(!groups.has(b.id) && (b.comentarios||b.resenha||(b.nota>0)||b.inicio))
+      groups.set(b.id,{ book:b, entries:[] });
+  }
+  const arr=[...groups.values()].map(x=>{
+    x.entries.sort((a,b)=> (a.ts||0)-(b.ts||0));
+    const lastTs=x.entries.length? Math.max(...x.entries.map(e=>+e.ts||0)) : 0;
+    x.sort=Math.max(lastTs, (x.book&&x.book.updatedAt)||0);
+    return x;
+  }).sort((a,b)=>b.sort-a.sort);
+  if(!arr.length){ wrap.innerHTML="<p style='color:var(--ink2);padding:20px 0;text-align:center'>Nenhuma leitura registrada ainda. Que tal começar hoje? 🙂</p>"; renderWeek(); return; }
   let html="";
-  const detailed = BOOKS.filter(b=>b.comentarios||b.resenha||(b.nota>0)||b.inicio)
-    .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
-  if(detailed.length){
-    html+=`<div class="section-label">✏️ Notas e resenhas</div>`;
-    for(const b of detailed){
-      const fb=fallback(b.title);
-      html+=`<div class="nbook" data-id="${b.id}" title="Clique para editar os detalhes">
-        ${b.cover?`<img src="${b.cover}" onerror="this.remove()">`:`<div class="fbmini" style="--g1:${fb.g1};--g2:${fb.g2}">${fb.initials}</div>`}
-        <div class="bd">
-          <div class="bt">${(b.title||"").replace(/</g,"&lt;")}</div>
-          <div class="bmeta">
-            ${b.status?`<span>${b.status}</span>`:""}
-            ${b.nota?`<span class="st">${"★".repeat(Math.min(5,b.nota))}</span>`:""}
-            ${(b.inicio||b.fim)?`<span>${b.inicio||"—"} → ${b.fim||"hoje"}</span>`:""}
-          </div>
-          ${b.comentarios?`<div class="n">${b.comentarios.replace(/</g,"&lt;")}</div>`:""}
-          ${b.resenha?`<div class="r">${b.resenha.replace(/</g,"&lt;")}</div>`:""}
+  for(const x of arr){
+    const b=x.book;
+    const title=b?b.title:(x.entries[0]?x.entries[0].bookId:"?");
+    const fb=fallback(title);
+    const totalP=x.entries.reduce((s,e)=>s+(+e.pages||0),0);
+    const last=x.entries.length?x.entries[x.entries.length-1].date:null;
+    html+=`<div class="nbook" data-id="${b?b.id:""}" ${b?'title="Clique para abrir e editar"':""}>
+      ${b&&b.cover?`<img src="${b.cover}" onerror="this.remove()">`:`<div class="fbmini" style="--g1:${fb.g1};--g2:${fb.g2}">${fb.initials}</div>`}
+      <div class="bd">
+        <div class="bt">${String(title).replace(/</g,"&lt;")}</div>
+        <div class="bmeta">
+          ${b&&b.status?`<span>${b.status}</span>`:""}
+          ${b&&b.nota?`<span class="st">${"★".repeat(Math.min(5,b.nota))}</span>`:""}
+          ${totalP?`<span>${totalP} pág</span>`:""}
+          ${last?`<span>${last===today()?"hoje":fmtDate(last)}</span>`:""}
         </div>
-        <span class="editl">✏️ editar</span>
-      </div>`;
-    }
-  }
-  if(!DIARY.length){
-    html+=`<p style="color:var(--ink2);padding:20px 0;text-align:center">${detailed.length?"Nenhuma leitura registrada ainda. Registre páginas no livro ou no botão acima. 🙂":"Nenhuma leitura registrada ainda. Que tal começar hoje? 🙂"}</p>`;
-    wrap.innerHTML=html; renderWeek(); return;
-  }
-  const byDate={};
-  DIARY.forEach(d=>{ (byDate[d.date]=byDate[d.date]||[]).push(d); });
-  html+=`<div class="section-label">📖 Linha do tempo</div>`;
-  const dates=Object.keys(byDate).sort().reverse();
-  for(const dt of dates){
-    const entries=byDate[dt];
-    const dayTotal=entries.reduce((s,d)=>s+(+d.pages||0),0);
-    html+=`<div class="day"><h3><span class="total">${dayTotal} pág</span>${dt===today()?"📌 Hoje":fmtDate(dt)}</h3>`;
-    for(const en of entries){
-      const b=BOOKS.find(x=>x.id===en.bookId);
-      const fb=fallback(b?b.title:en.bookId);
-      html+=`<div class="mbox" data-eid="${en.id}" title="Clique para editar">
-        ${b&&b.cover?`<img src="${b.cover}" onerror="this.remove()">`:`<div class="fbmini" style="--g1:${fb.g1};--g2:${fb.g2}">${fb.initials}</div>`}
-        <div class="bd"><div class="bt">${b?b.title:en.bookId}</div>
-        <div class="bp">${en.pages} páginas · ${en.date}</div>
-        ${en.note?`<div class="n">${en.note.replace(/</g,"&lt;")}</div>`:""}</div>
-        <button class="x" data-del="${en.id}" title="Apagar registro">✕</button>
-      </div>`;
-    }
-    html+="</div>";
+        ${b&&b.comentarios?`<div class="n">${b.comentarios.replace(/</g,"&lt;")}</div>`:""}
+        ${b&&b.resenha?`<div class="r">${b.resenha.replace(/</g,"&lt;")}</div>`:""}
+        ${x.entries.length?`<div class="elog">${x.entries.map(e=>`<div class="erow"><b>${e.pages}</b> pág · ${fmtDate(e.date)}${e.note?` — <span>${e.note.replace(/</g,"&lt;")}</span>`:""}</div>`).join("")}</div>`:""}
+      </div>
+      ${b?`<span class="editl">✏️ editar</span>`:""}
+    </div>`;
   }
   wrap.innerHTML=html;
-  wrap.querySelectorAll(".x").forEach(x=>x.addEventListener("click",async(ev)=>{
-    ev.stopPropagation();
-    await delOf("diary",String(x.dataset.del)); await loadData(); renderDiary(); markDirty();
-  }));
-  wrap.querySelectorAll(".mbox").forEach(m=>m.addEventListener("click",ev=>{
-    if(ev.target.closest(".x")) return;
-    const e=DIARY.find(d=>String(d.id)===m.dataset.eid);
-    if(e) openDiaryForm(e.bookId, e);
-  }));
   wrap.querySelectorAll(".nbook").forEach(n=>n.addEventListener("click",()=>{
     const b=BOOKS.find(x=>x.id===n.dataset.id); if(!b) return;
     openBook(b.id, n.getBoundingClientRect());
