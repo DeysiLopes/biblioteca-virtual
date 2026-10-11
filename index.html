@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#5b4b3f">
+<meta name="theme-color" content="#17100f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,9 +18,11 @@
 <title>Minha Biblioteca</title>
 <style>
   :root{
-    --paper:#f6ebd9; --paper2:#efe0c8; --ink:#43352a; --ink2:#6b5747;
-    --wood:#8a5a33; --wood2:#6f4526; --accent:#b3541e; --green:#3e5c4a;
-    --shadow:0 18px 40px -18px oklch(0.2 0.04 40 / 0.65);
+    --paper:#201812; --paper2:#2b221a; --ink:#efdfc8; --ink2:#c0ac93;
+    --wood:#917157; --wood2:#2f1e10; --accent:#e09a5b; --green:#4c9a6a;
+    --panel:oklch(0.92 0.03 60 / .06); --panel2:oklch(0.9 0.03 60 / .12);
+    --line:oklch(0.75 0.03 60 / .15);
+    --shadow:0 18px 40px -18px oklch(0 0 0 / .75);
     --ease:cubic-bezier(.22,1,.36,1);
   }
   *{box-sizing:border-box; margin:0; padding:0;}
@@ -28,8 +30,9 @@
   body{
     font-family:"Nunito",system-ui,sans-serif; color:var(--ink);
     background:
-      radial-gradient(1200px 500px at 50% -10%, oklch(0.9 0.05 70 / .5), transparent 60%),
-      linear-gradient(180deg, #fbf4e8, #f0e2c8 55%, #e5d2ab);
+      radial-gradient(1100px 520px at 50% -10%, oklch(0.34 0.07 330 / .42), transparent 62%),
+      radial-gradient(900px 620px at 100% 100%, oklch(0.32 0.06 50 / .45), transparent 55%),
+      linear-gradient(180deg, #17100f, #241a17 48%, #1b1722);
     background-attachment:fixed;
     min-height:100dvh;
     -webkit-tap-highlight-color:transparent;
@@ -40,8 +43,8 @@
     position:sticky; top:0; z-index:40;
     display:flex; align-items:center; gap:12px;
     padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top));
-    background:linear-gradient(180deg, oklch(0.55 0.06 50 / .96), oklch(0.42 0.05 45 / .96));
-    color:#f6ebd9; box-shadow:0 6px 24px -12px oklch(0 0 0 / .55);
+    background:linear-gradient(180deg, oklch(0.32 0.06 320 / .96), oklch(0.22 0.05 40 / .97));
+    color:#f0e2cc; box-shadow:0 6px 24px -12px oklch(0 0 0 / .6);
   }
   header .logo{
     width:40px;height:40px;border-radius:10px;object-fit:cover;
@@ -51,11 +54,11 @@
   header h1 small{display:block; font-size:11px; font-weight:600; opacity:.75;}
   header .actions{display:flex; gap:6px; align-items:center;}
   .hbtn{
-    border:1px solid oklch(1 0 0 / .25); background:oklch(1 0 0 / .08); color:#f6ebd9;
+    border:1px solid oklch(1 0 0 / .18); background:oklch(1 0 0 / .07); color:#f0e2cc;
     border-radius:10px; padding:8px 10px; font:600 12px/1 "Nunito",sans-serif; cursor:pointer;
     display:flex; align-items:center; gap:6px; transition:.2s;
   }
-  .hbtn:hover{background:oklch(1 0 0 / .18);}
+  .hbtn:hover{background:oklch(1 0 0 / .15);}
   .hbtn svg{width:16px;height:16px;flex:none;}
   .hbtn.ghost{opacity:.85;}
   @media(max-width:560px){ header h1 small{display:none;} .hbtn span{display:none;} }
@@ -65,11 +68,11 @@
   }
   nav.tabs button{
     flex:1; font:800 15px "Nunito",sans-serif; padding:12px; border:none; cursor:pointer;
-    border-radius:14px 14px 0 0; background:oklch(1 0 0 / .12); color:var(--ink2);
+    border-radius:14px 14px 0 0; background:oklch(1 0 0 / .05); color:var(--ink2);
     transition:.2s; display:flex; align-items:center; justify-content:center; gap:8px;
   }
   nav.tabs button.active{
-    background:oklch(0.98 0.02 70 / .92); color:var(--ink); box-shadow:0 -6px 18px -14px oklch(0 0 0 / .4);
+    background:var(--paper2); color:var(--ink); box-shadow:0 -6px 18px -14px oklch(0 0 0 / .5);
   }
   nav.tabs button svg{width:18px;height:18px;}
 
@@ -77,55 +80,78 @@
 
   .filters{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 4px;}
   .pill{
-    border:1px solid oklch(0.35 0.04 45 / .25); background:oklch(1 0 0 / .6); color:var(--ink2);
+    border:1px solid var(--line); background:var(--panel); color:var(--ink2);
     border-radius:999px; padding:6px 12px; font:600 12px/1 "Nunito",sans-serif; cursor:pointer; transition:.15s;
   }
-  .pill.on{background:var(--green); color:#f6ebd9; border-color:var(--green);}
+  .pill.on{background:var(--green); color:#0f1a12; border-color:var(--green);}
   .pill::first-letter{text-transform:uppercase;}
 
   .statsRow{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px; font-size:12.5px; color:var(--ink2);}
   .statsRow b{color:var(--ink);}
 
-  /* estante */
-  .shelf{ margin:26px 0 4px; }
-  .shelf-head{ font:700 15px "Cormorant Garamond",serif; letter-spacing:.4px; color:var(--ink); margin:0 4px 10px; }
-  .shelf-inner{
-    display:grid; grid-template-columns:repeat(6,1fr); gap:14px;
-    padding:18px 14px 6px; border-radius:16px 16px 6px 6px;
+  /* estante — aconchegante: livros inclinados e empilhados, madeira escura */
+  .shelf{ margin:30px 0 6px; position:relative; }
+  .shelf-head{ font:700 15px "Cormorant Garamond",serif; letter-spacing:.4px; color:var(--ink2); margin:0 8px 8px; display:flex; align-items:center; justify-content:space-between; }
+  .shelf-head i{ font-style:normal; font:800 11px "Nunito",sans-serif; color:var(--accent); }
+  .shelf-wood{
+    position:relative; padding:16px 14px 0; border-radius:14px 14px 6px 6px;
     background:
-      radial-gradient(140% 90% at 50% -40%, oklch(0.62 0.08 60 / .28), transparent 55%),
-      linear-gradient(180deg, var(--wood2), var(--wood));
-    box-shadow:inset 0 -10px 22px -12px oklch(0 0 0 / .5), 0 10px 24px -18px oklch(0 0 0 / .6);
+      radial-gradient(120% 85% at 50% -30%, oklch(0.42 0.06 55 / .45), transparent 62%),
+      linear-gradient(180deg, #261810, #1a1009);
+    box-shadow:inset 0 14px 28px -20px oklch(0 0 0 / .95), 0 8px 26px -18px oklch(0 0 0 / .8);
   }
-  .book-card{ cursor:pointer; position:relative; }
-  .cover-wrap{
-    position:relative; width:100%; aspect-ratio:2/3; border-radius:4px 10px 10px 4px; overflow:hidden;
-    background:var(--paper);
-    box-shadow:0 16px 30px -14px oklch(0 0 0 / .65), inset 4px 0 8px -4px oklch(0 0 0 / .4);
-    transition:transform .28s var(--ease), box-shadow .28s;
-    transform-origin:50% 100%;
+  .shelf-wood::before{
+    content:""; position:absolute; inset:12px auto 12px 8px; width:6px; border-radius:3px;
+    background:linear-gradient(180deg, #7a5b41, #4a331f); box-shadow:0 0 8px oklch(0 0 0 / .4);
   }
-  .book-card:hover .cover-wrap{ transform:scale(1.12) rotate(-1.5deg); box-shadow:0 26px 44px -16px oklch(0 0 0 / .7); }
-  .book-card:active .cover-wrap{ transform:scale(1.06); }
-  .cover-wrap img{ width:100%; height:100%; object-fit:cover; position:relative; z-index:1; }
+  .shelf-wood::after{
+    content:""; position:absolute; inset:12px 8px 12px auto; width:6px; border-radius:3px;
+    background:linear-gradient(180deg, #7a5b41, #4a331f); box-shadow:0 0 8px oklch(0 0 0 / .4);
+  }
+  .books{ display:flex; align-items:flex-end; gap:4px; min-height:162px; padding:6px 6px 15px; position:relative; z-index:2; }
+  .book-card{
+    flex:none; position:relative; cursor:pointer; line-height:0; z-index:1;
+    transition:transform .3s var(--ease), filter .3s;
+  }
+  .book-card .cover-wrap{
+    position:relative; width:var(--w,60px); height:var(--h,120px);
+    border-radius:3px 8px 8px 3px; overflow:hidden;
+    background:linear-gradient(120deg,#3a2a1c,#58422a);
+    box-shadow:0 12px 22px -10px oklch(0 0 0 / .75), inset 4px 0 8px -4px oklch(0 0 0 / .5);
+    transition:transform .35s var(--ease), box-shadow .35s;
+  }
+  .book-card:hover{ z-index:6; }
+  .book-card:hover .cover-wrap{ transform:translateY(-7px) rotate(0deg) scale(1.03); box-shadow:0 22px 34px -14px oklch(0 0 0 / .85), inset 4px 0 8px -4px oklch(0 0 0 / .5); }
+  .book-card:active .cover-wrap{ transform:translateY(-2px) scale(1.0); }
+  .book-card img{ width:100%; height:100%; object-fit:cover; position:relative; z-index:1; border-radius:inherit; }
   .fallback{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
-    font-family:"Cormorant Garamond",serif; font-weight:700; font-size:15px; letter-spacing:.3px;
-    color:oklch(0.18 0.04 30 / .9); text-shadow:0 1px 0 oklch(1 0 0 / .35);
+    font-family:"Cormorant Garamond",serif; font-weight:700; font-size:13.5px; letter-spacing:.3px;
+    color:oklch(0.16 0.04 30 / .9); text-shadow:0 1px 0 oklch(1 0 0 / .3);
     background:linear-gradient(150deg, var(--g1), var(--g2));
   }
-  .meta{ margin-top:7px; }
-  .meta .t{ font:700 12.5px/1.25 "Nunito",sans-serif; color:var(--ink); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .meta .a{ font-size:11px; color:var(--ink2); display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
-  .meta .dot{ display:flex; align-items:center; gap:5px; margin-top:4px; font-size:10.5px; color:var(--ink2); }
-  .meta .dot i{ width:9px;height:9px;border-radius:50%; flex:none; }
-  .progbar{ height:4px; border-radius:99px; background:oklch(0.5 0.02 40 / .25); margin-top:6px; overflow:hidden; }
-  .progbar>div{ height:100%; background:var(--accent); border-radius:99px; }
-
-  .rail{ height:18px; border-radius:6px 6px 16px 16px; background:linear-gradient(180deg, oklch(0.55 0.07 55 / .9), oklch(0.45 0.06 50 / .95)); margin-top:-3px; box-shadow:inset 0 2px 3px oklch(1 0 0 / .25), 0 8px 16px -10px oklch(0 0 0 / .5); }
-
-  @media(max-width:900px){ .shelf-inner{grid-template-columns:repeat(4,1fr);} }
-  @media(max-width:560px){ .shelf-inner{grid-template-columns:repeat(3,1fr); gap:10px;} .fallback{font-size:13px;} }
+  .book-card.lean{ transform:rotate(7deg) translateX(-7px); z-index:3; }
+  .book-card.leanl{ transform:rotate(-6deg); z-index:3; }
+  .book-card.lean .cover-wrap,.book-card.leanl .cover-wrap{ box-shadow:0 16px 26px -12px oklch(0 0 0 / .8), inset 4px 0 8px -4px oklch(0 0 0 / .45); }
+  .book-card.short{ opacity:.96; }
+  /* empilhadozinho decorativo no fim da prateleira */
+  .deco{ flex:none; align-self:flex-end; width:66px; height:120px; position:relative; z-index:0; margin-bottom:15px; }
+  .deco .dbookend{ position:absolute; right:0; bottom:0; width:11px; height:98px; border-radius:3px;
+    background:linear-gradient(180deg,#7a5433,#4a331f); box-shadow:0 10px 18px -8px oklch(0 0 0/.6); }
+  .deco .dstack{ position:absolute; left:6px; bottom:0; width:36px; height:46px; border-radius:4px 8px 8px 4px;
+    background:linear-gradient(180deg,#8a6d4f,#5f4529); box-shadow:0 10px 18px -8px oklch(0 0 0/.6); }
+  .deco .dstack::before{ content:""; position:absolute; top:-15px; left:3px; width:29px; height:12px; border-radius:3px 6px 6px 3px;
+    background:linear-gradient(180deg,#9b5f5a,#5c304c); }
+  .deco .dstack::after{ content:""; position:absolute; top:-29px; left:8px; width:21px; height:12px; border-radius:2px 5px 5px 2px;
+    background:linear-gradient(180deg,#2e4a6b,#1c1a2b); }
+  .rail{
+    position:relative; height:20px; margin-top:-2px; border-radius:5px 5px 14px 14px;
+    background:linear-gradient(180deg, #d9b987 0%, #a88e70 24%, #674b32 58%, #3a2413 100%);
+    box-shadow:inset 0 2px 3px oklch(1 0 0 / .28), 0 14px 26px -12px oklch(0 0 0 / .75);
+  }
+  .rail::before{ content:""; position:absolute; inset:0 9px; border-top:1px solid oklch(1 0 0 / .22); }
+  @media(max-width:900px){ .books{ min-height:138px; } .deco{ width:56px; height:106px; } }
+  @media(max-width:560px){ .books{ min-height:122px; gap:3px; } .deco{ display:none; } }
 
   #empty{padding:40px 10px; text-align:center; color:var(--ink2); font-size:14px;}
 
@@ -163,8 +189,9 @@
   .stars span.on{ color:#e8a33d; transform:scale(1.12); }
   input[type=number],select,textarea{
     width:100%; font:600 14px "Nunito",sans-serif; color:var(--ink);
-    background:oklch(1 0 0 / .65); border:1.5px solid oklch(0.4 0.04 45 / .25); border-radius:10px; padding:9px 11px; outline:none;
+    background:oklch(0 0 0 / .24); border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; outline:none;
   }
+  input::placeholder,textarea::placeholder{ color:oklch(0.8 0.02 60 / .55); }
   textarea{resize:vertical; min-height:54px;}
   input:focus,select:focus,textarea:focus{border-color:var(--accent);}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
@@ -180,13 +207,13 @@
   .mbtn.ghost2{background:oklch(0.35 0.05 45 / .1); color:var(--ink2); padding:8px 12px; font:700 13px;}
   .mbtn.danger{background:oklch(0.6 0.15 25 / .12); color:#a03a1e;}
   .mfoot{display:flex; gap:8px; margin-top:14px; align-items:center;}
-  .entry{ background:oklch(1 0 0 / .55); border-radius:10px; padding:9px 11px; margin-top:6px; font-size:13px; border:1px solid oklch(0.4 0.04 45 / .15); }
+  .entry{ background:var(--panel); border-radius:10px; padding:9px 11px; margin-top:6px; font-size:13px; border:1px solid var(--line); }
   .entry .d{font-size:11.5px; color:var(--ink2); display:flex; justify-content:space-between; gap:8px;}
   .entry .x{cursor:pointer; background:none; border:none; color:#a03a1e; font:800 13px "Nunito",sans-serif;}
 
   /* diário */
   #diaryView .dstats{display:flex; flex-wrap:wrap; gap:10px; margin:6px 0 14px;}
-  .dbox{ flex:1; min-width:120px; background:oklch(1 0 0 / .55); border:1px solid oklch(0.4 0.04 45 / .18); border-radius:14px; padding:12px 14px; }
+  .dbox{ flex:1; min-width:120px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; }
   .dbox .v{font:800 22px "Cormorant Garamond",serif; color:var(--ink);}
   .dbox .l{font-size:11.5px; color:var(--ink2); text-transform:uppercase; letter-spacing:.5px;}
   .big{ width:100%; background:var(--green); color:#f6ebd9; border:none; border-radius:14px; padding:14px; font:800 15px "Nunito",sans-serif; cursor:pointer; box-shadow:var(--shadow); transition:.15s; }
@@ -194,7 +221,7 @@
   .day{ margin:16px 0; }
   .day h3{ font:700 15px "Nunito",sans-serif; color:var(--ink); border-bottom:1px dashed oklch(0.4 0.04 45 / .3); padding-bottom:6px; }
   .day .total{ float:right; font:700 12.5px; color:var(--accent); }
-  .mbox{ display:flex; gap:10px; align-items:flex-start; background:oklch(1 0 0 / .6); border:1px solid oklch(0.4 0.04 45 / .16); border-radius:12px; padding:10px 12px; margin-top:8px; }
+  .mbox{ display:flex; gap:10px; align-items:flex-start; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:8px; }
   .mbox img,.mbox .fbmini{ width:40px; height:58px; border-radius:3px 7px 7px 3px; object-fit:cover; flex:none; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
   .mbox .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:oklch(0.2 0 0 / .85); background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .mbox .bd{ flex:1; }
@@ -211,7 +238,7 @@
 
   #toast{
     position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(20px);
-    background:var(--ink); color:#f6ebd9; padding:11px 18px; border-radius:12px; font:700 13px "Nunito",sans-serif;
+    background:#3b2d1e; color:#f6ebd9; padding:11px 18px; border-radius:12px; font:700 13px "Nunito",sans-serif;
     opacity:0; transition:.3s var(--ease); z-index:100; pointer-events:none; box-shadow:var(--shadow);
   }
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
@@ -237,9 +264,9 @@
   #syncDot.sync{ background:#f6c96b; }
 
   /* gráfico da semana */
-  .week{ display:flex; gap:10px; align-items:flex-end; background:oklch(1 0 0 / .5); border:1px solid oklch(0.4 0.04 45 / .16); border-radius:14px; padding:14px; margin-bottom:14px; height:110px; }
+  .week{ display:flex; gap:10px; align-items:flex-end; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px; height:110px; }
   .week .wcol{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:5px; height:100%; }
-  .week .wcol .bar{ width:100%; max-width:34px; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg, #b3541e, #8a3f16); min-height:3px; transition:height .4s var(--ease); }
+  .week .wcol .bar{ width:100%; max-width:34px; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg, #e0a470, #a8662f); min-height:3px; transition:height .4s var(--ease); }
   .week .wcol.today .bar{ background:linear-gradient(180deg,#3e8f5a,#2c6a41); }
   .week .wcol span.l{ font-size:10px; color:var(--ink2); }
   .week .wcol span.v{ font-size:10.5px; color:var(--ink); font-weight:800; }
@@ -330,7 +357,7 @@
 "use strict";
 const $ = (s,r=document)=>r.querySelector(s);
 const STATUS = ["Quero ler","Lendo","Lido","Abandonado"];
-const STATUS_COLOR = {"Quero ler":"#8a5a33","Lendo":"#3e5c4a","Lido":"#b3541e","Abandonado":"#8d8577"};
+const STATUS_COLOR = {"Quero ler":"#caa370","Lendo":"#6fbf8f","Lido":"#e09a5b","Abandonado":"#b3a28c"};
 const OVERRIDE = ["nota","comentarios","resenha","status","tipo","paginasLidas","inicio","fim","updatedAt"];
 const GIT = { owner:"DeysiLopes", repo:"biblioteca-virtual", path:"data/sync.json", branch:"main" };
 function uid(){ try{ return crypto.randomUUID(); }catch(e){ return "id-"+Date.now()+"-"+Math.random().toString(36).slice(2,10); } }
@@ -364,7 +391,6 @@ function pct(b){ return b.paginas>0 ? Math.min(100, Math.round(((b.paginasLidas|
 function hashHue(s){ let h=0; for(const c of String(s)) h=(h*31 + c.charCodeAt(0))%360; return h; }
 function fallback(title){ const h=hashHue(title); return {g1:`oklch(${0.72+((h%40)/100)} ${0.09} ${h})`, g2:`oklch(${0.5+((h%25)/100)} ${0.12} ${(h+45)%360})`, initials: norm(title).split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase() || (title&&title[0]||"?").toUpperCase() }; }
 function statusDot(b){ return `<i style="background:${STATUS_COLOR[b.status]||"#bdb3a4"}"></i>`+ (b.status||"sem status"); }
-
 /* ---------- catálogo ---------- */
 async function loadCatalog(){
   let list=[];
@@ -565,36 +591,45 @@ function renderFilters(){
     renderFilters(); renderShelves();
   }));
 }
-function cardHTML(b){
+function bookSize(b){ const h=86+(hashHue(b.title||"")%54); return h; }
+function cardHTML(b, mode){
   let img = b.cover ? `<img loading="lazy" src="${b.cover}" alt="${(b.title||"").replace(/"/g,"&quot;")}" onerror="this.style.display='none'">` : "";
   const fb=fallback(b.title);
-  const p=pct(b);
-  return `<div class="book-card" data-id="${b.id}">
-    <div class="cover-wrap" style="--g1:${fb.g1};--g2:${fb.g2}">
+  let h=bookSize(b);
+  const cls=["","lean","","","leanl","short"][mode%6];
+  if(mode%6===5) h=Math.round(h*0.84);
+  const w=Math.max(40,Math.round(h*2/3));
+  const tip=`${b.title||"Sem título"}${b.author?" · "+b.author:""}`;
+  return `<div class="book-card ${cls}" data-id="${b.id}" style="--w:${w}px;--h:${h}px">
+    <div class="cover-wrap" style="--g1:${fb.g1};--g2:${fb.g2}" title="${tip.replace(/"/g,"&quot;")}">
       <div class="fallback">${fb.initials}</div>${img}
-    </div>
-    <div class="meta">
-      <div class="t">${b.title||"Sem título"}</div>
-      <div class="a">${b.author||""}</div>
-      <div class="dot">${statusDot(b)}${(b.nota>0?` ★ ${b.nota}`:"")}</div>
-      ${bbar(p)}
     </div>
   </div>`;
 }
-function bbar(p){ return p>0?`<div class="progbar"><div style="width:${p}%"></div></div>`:""; }
-const CHUNK=6;
 function renderShelves(){
   const list=visibleBooks();
   const wrap=$("#shelves");
   wrap.innerHTML="";
   $("#empty").hidden = list.length>0;
   if(!list.length) return;
-  const rows=[];
-  for(let i=0;i<list.length;i+=CHUNK) rows.push(list.slice(i,i+CHUNK));
-  rows.forEach((row,ri)=>{
-    const shelf=document.createElement("div"); shelf.className="shelf";
-    shelf.innerHTML=`<div class="shelf-head">Prateleira ${ri+1}</div><div class="shelf-inner">${row.map(cardHTML).join("")}</div><div class="rail"></div>`;
-    wrap.appendChild(shelf);
+  const avail=Math.max(180, wrap.clientWidth-28);
+  const rows=[]; let row=[], wsum=0;
+  for(let i=0;i<list.length;i++){
+    const b=list[i];
+    const bw=Math.max(40,Math.round(bookSize(b)*2/3))+4;
+    if(row.length && wsum+bw>avail){ rows.push(row); row=[]; wsum=0; }
+    row.push(b); wsum+=bw;
+  }
+  if(row.length) rows.push(row);
+  rows.forEach((r,ri)=>{
+    const sf=document.createElement("div"); sf.className="shelf";
+    let inner="";
+    r.forEach((b,mi)=>{ inner+=cardHTML(b, mi+ri*3); });
+    sf.innerHTML=`<div class="shelf-head">Prateleira ${ri+1}<i>${r.length} livros</i></div>
+      <div class="shelf-wood"><div class="books">${inner}
+        <div class="deco"><div class="dbookend"></div><div class="dstack"></div></div>
+      </div></div><div class="rail"></div>`;
+    wrap.appendChild(sf);
   });
   wrap.querySelectorAll(".book-card").forEach(c=>c.addEventListener("click",()=>{
     const rect=c.querySelector(".cover-wrap").getBoundingClientRect();
