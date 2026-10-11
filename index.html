@@ -237,6 +237,8 @@
   .nbook img,.nbook .fbmini{ width:40px; height:58px; border-radius:3px 7px 7px 3px; object-fit:cover; flex:none; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
   .nbook .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:oklch(0.2 0 0 / .85); background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .coverbtn{ background:none; border:none; padding:0; margin:0; flex:none; cursor:pointer; display:block; line-height:0; }
+  .nbook .cwrap{ position:relative; display:block; width:40px; height:58px; flex:none; border-radius:3px 7px 7px 3px; overflow:hidden; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
+  .nbook .cwrap img, .nbook .cwrap .fbmini{ position:absolute; inset:0; width:100%; height:100%; border-radius:0; box-shadow:none; }
   .nbook .bd{ flex:1; min-width:0; }
   .nbook .bt{ font:700 13.5px; }
   .nbook .bmeta{ font-size:11px; color:var(--ink2); margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
@@ -1249,7 +1251,9 @@ function renderDiary(){
     const totalP=x.entries.reduce((s,e)=>s+(+e.pages||0),0);
     const last=x.entries.length?x.entries[x.entries.length-1].date:null;
     html+=`<div class="nbook" data-id="${b?b.id:""}" ${b?'title="Clique para abrir e editar"':""}>
-      <button class="coverbtn" ${b?`data-flip="${b.id}" title="Ver contracapa"`:""}>${b&&b.cover?`<img src="${b.cover}" onerror="this.remove()">`:`<div class="fbmini" style="--g1:${fb.g1};--g2:${fb.g2}">${fb.initials}</div>`}</button>
+      <button class="coverbtn" ${b?`data-flip="${b.id}" title="Toque para girar e ver a resenha"`:""}>
+        <span class="cwrap" style="--g1:${fb.g1};--g2:${fb.g2}"><span class="fbmini">${fb.initials}</span>${b&&b.cover?`<img src="${b.cover}" alt="" onerror="this.remove()">`:""}</span>
+      </button>
       <div class="bd">
         <div class="bt">${String(title).replace(/</g,"&lt;")}</div>
         <div class="bmeta">
