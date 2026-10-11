@@ -216,6 +216,34 @@
   }
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
+  /* sincronização */
+  #syncform{ position:fixed; inset:0; z-index:80; display:none; background:oklch(0.18 0.03 35 / .5); backdrop-filter:blur(5px); }
+  #syncform.open{ display:flex; }
+  #syncform .sheet{ width:100%; max-width:520px; margin:0 auto; display:flex; flex-direction:column; max-height:88dvh; overflow-y:auto; background:var(--paper); border-radius:22px 22px 0 0; padding:18px 20px calc(22px + env(safe-area-inset-bottom)); box-shadow:0 -20px 60px -20px oklch(0 0 0 / .7); }
+  #syncform .hint{ font-size:13px; color:var(--ink2); margin-bottom:10px; line-height:1.45; }
+  #syncform .mini{ font-size:11.5px; color:var(--ink2); line-height:1.5; margin-top:6px; }
+  .syncstat{
+    display:flex; align-items:center; gap:8px; font:700 13px "Nunito",sans-serif; padding:9px 12px;
+    border-radius:10px; background:oklch(0.35 0.05 45 / .1); color:var(--ink2); margin-bottom:12px;
+  }
+  .syncstat .s{ width:10px;height:10px;border-radius:50%; background:#bdb3a4; flex:none; }
+  .syncstat.ok .s{ background:#3e8f5a; }
+  .syncstat.err .s{ background:#c0502e; }
+  .syncstat.load .s{ background:transparent; border:2px solid oklch(0.4 0.05 45 / .3); border-top-color:var(--accent); animation:spin .8s linear infinite; }
+  header .hbtn:has(#syncDot){ padding-right:14px; position:relative; }
+  #syncDot{ width:9px;height:9px;border-radius:50%; background:#8d8577; position:absolute; right:5px; top:5px; box-shadow:0 0 0 2px oklch(0.3 0.04 45 / .9); }
+  #syncDot.on{ background:#6fce8f; }
+  #syncDot.err{ background:#ff9066; }
+  #syncDot.sync{ background:#f6c96b; }
+
+  /* gráfico da semana */
+  .week{ display:flex; gap:10px; align-items:flex-end; background:oklch(1 0 0 / .5); border:1px solid oklch(0.4 0.04 45 / .16); border-radius:14px; padding:14px; margin-bottom:14px; height:110px; }
+  .week .wcol{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:5px; height:100%; }
+  .week .wcol .bar{ width:100%; max-width:34px; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg, #b3541e, #8a3f16); min-height:3px; transition:height .4s var(--ease); }
+  .week .wcol.today .bar{ background:linear-gradient(180deg,#3e8f5a,#2c6a41); }
+  .week .wcol span.l{ font-size:10px; color:var(--ink2); }
+  .week .wcol span.v{ font-size:10.5px; color:var(--ink); font-weight:800; }
+
   #loading{ padding:60px 20px; text-align:center; font:700 15px "Cormorant Garamond",serif; color:var(--ink2); }
   @keyframes spin{to{transform:rotate(360deg);}}
   .spin{ display:inline-block; width:20px;height:20px; border:3px solid oklch(0.4 0.05 45 / .25); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
@@ -231,6 +259,7 @@
     <button class="hbtn ghost" id="btnImport" title="Importar CSV">⇪<span>CSV</span></button>
     <button class="hbtn ghost" id="btnInstall" title="Instalar como app" style="display:none">📱<span>Instalar</span></button>
     <button class="hbtn ghost" id="btnBell" title="Lembrete diário">🔔</button>
+    <button class="hbtn ghost" id="btnSync" title="Sincronização">🔄<span id="syncDot"></span></button>
   </div>
 </header>
 
@@ -249,6 +278,7 @@
 
   <section id="diaryView" hidden>
     <div class="dstats" id="dstats"></div>
+    <div class="week" id="week"></div>
     <button class="big" id="btnAddDiary">＋ Registrar leitura de hoje</button>
     <div id="diaryList"></div>
   </section>
@@ -257,6 +287,26 @@
 <input type="file" id="fileCSV" accept=".csv,.txt" hidden>
 
 <div id="modal"></div>
+
+<div id="syncform">
+  <div class="sheet">
+    <h2>🔄 Sincronização</h2>
+    <p class="hint">O app guarda diário e notas num arquivo <b>data/sync.json</b> deste repositório GitHub. Assim celular, tablet e o widget online compartilham tudo.</p>
+    <div class="syncstat" id="syncStat">ainda não sincronizado</div>
+    <div class="field"><label>Token do GitHub (fine-grained)</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="syncToken" placeholder="github_pat_...">
+        <button class="mbtn ghost2" id="syncShow" type="button" style="white-space:nowrap">ver</button>
+      </div>
+    </div>
+    <p class="mini">Como criar (2 min): <b>github.com/settings/personal-access-tokens/new</b> → Repository access: <b>Only select repositories</b> → escolha <b>biblioteca-virtual</b> → Repository permissions: <b>Contents → Read and write</b> → Generate. Cole o token acima.</p>
+    <div class="mfoot">
+      <button class="mbtn ghost2" id="syncCancel">Fechar</button>
+      <button class="mbtn ghost2" id="syncNow" style="flex:1">Sincronizar agora</button>
+      <button class="mbtn primary" id="syncSave" style="flex:1">Salvar token</button>
+    </div>
+  </div>
+</div>
 
 <div id="dform">
   <div class="sheet">
@@ -281,7 +331,9 @@
 const $ = (s,r=document)=>r.querySelector(s);
 const STATUS = ["Quero ler","Lendo","Lido","Abandonado"];
 const STATUS_COLOR = {"Quero ler":"#8a5a33","Lendo":"#3e5c4a","Lido":"#b3541e","Abandonado":"#8d8577"};
-const OVERRIDE = ["nota","comentarios","resenha","status","tipo","paginasLidas"];
+const OVERRIDE = ["nota","comentarios","resenha","status","tipo","paginasLidas","inicio","fim","updatedAt"];
+const GIT = { owner:"DeysiLopes", repo:"biblioteca-virtual", path:"data/sync.json", branch:"main" };
+function uid(){ try{ return crypto.randomUUID(); }catch(e){ return "id-"+Date.now()+"-"+Math.random().toString(36).slice(2,10); } }
 
 /* ---------- IndexedDB ---------- */
 const DB_NAME="biblioteca", DB_VER=1;
@@ -301,9 +353,10 @@ async function putOf(name,v){ await reqi((await store("readwrite",name)).put(v))
 async function delOf(name,k){ await reqi((await store("readwrite",name)).delete(k)); }
 
 /* ---------- estado ---------- */
-let BOOKS=[], DIARY=[], META={};
+let BOOKS=[], DIARY=[], META={}, CATALOG=[];
 let fdStatus="todos", fdGenre="todos", lastTab="shelf", openRect=null, openTarget=null;
 let deferredInstall=null;
+let syncTimer=null, syncState={ busy:false, last:false, error:null };
 
 function norm(s){ return (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w\s]/g," ").replace(/\s+/g," ").trim(); }
 const slug = t => norm(t).replace(/\s+/g,"-");
@@ -320,19 +373,173 @@ async function loadCatalog(){
     list = r.ok ? await r.json() : [];
   }catch(e){ try{ list = JSON.parse(localStorage.getItem("bib-catalog")||"[]"); }catch(_){} }
   localStorage.setItem("bib-catalog", JSON.stringify(list));
+  CATALOG=list;
   const existing = await allOf("books");
-  const map = new Map(existing.map(b=>[b.id,b]));
-  for(const row of list){
-    const cur = map.get(row.id);
-    const merged = Object.assign({}, row);
-    if(cur) for(const k of OVERRIDE) if(cur[k]!==undefined && cur[k]!==null && cur[k]!=="") merged[k]=cur[k];
-    map.set(row.id, merged);
-  }
-  const sorted=[...map.values()].sort((a,b)=>a.title.localeCompare(b.title,"pt"));
+  BOOKS = mergeCatalog(list, existing);
   const s=await store("readwrite","books");
-  sorted.forEach(b=>s.put(b));
-  BOOKS=sorted;
+  BOOKS.forEach(b=>s.put(b));
 }
+
+function mergeCatalog(catalog, localBooks){
+  const map = new Map(catalog.map(b=>[b.id,b]));
+  localBooks.forEach(cur=>{
+    if(!map.has(cur.id)){
+      map.set(cur.id, Object.assign({ id:cur.id, title:cur.title||"Sem título", author:cur.author||"", cover:cur.cover||"", paginas:cur.paginas||0, genero:cur.genero||"", formato:cur.formato||"", idioma:cur.idioma||"", nota:cur.nota||0, status:cur.status||"Quero ler", tipo:cur.tipo||"", paginasLidas:cur.paginasLidas||0 }, cur));
+      return;
+    }
+    const base = map.get(cur.id);
+    for(const k of OVERRIDE) if(cur[k]!==undefined && cur[k]!==null && cur[k]!=="") base[k]=cur[k];
+  });
+  return [...map.values()].sort((a,b)=>a.title.localeCompare(b.title,"pt"));
+}
+
+/* ---------- sincronização GitHub ---------- */
+function syncUi(){
+  const dot=$("#syncDot");
+  if(!dot) return;
+  if(syncState.busy) dot.className="sync";
+  else if(META.githubToken && syncState.last!==false) dot.className="on";
+  else if(syncState.error) dot.className="err";
+  else if(!META.githubToken) dot.className="";
+  const st=$("#syncStat");
+  if(!st) return;
+  let txt="";
+  if(syncState.busy) txt="sincronizando…";
+  else if(syncState.error) txt="⚠ "+syncState.error;
+  else if(!META.githubToken) txt="Configure o token para compartilhar entre aparelhos.";
+  else txt = META.last ? "✓ sincronizado" + (META.lastSyncAt?" ("+new Date(META.lastSyncAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+")":"") : "Token salvo — toque em “Sincronizar agora”.";
+  st.innerHTML=`<span class="s"></span>${txt}`;
+  st.className="syncstat"+(syncState.busy?" load":"" )+(syncState.error?" err":(META.githubToken&&(syncState.last||META.lastSyncAt)?" ok":""));
+}
+function ghHeaders(){
+  const h={} ;
+  if(META.githubToken) h["Authorization"]="Bearer "+META.githubToken;
+  return h;
+}
+async function ghApi(method, url, bodyObj){
+  const headers=Object.assign({}, ghHeaders());
+  if(bodyObj) headers["Content-Type"]="application/json";
+  const res=await fetch(url,{ method, headers, body: bodyObj?JSON.stringify(bodyObj):undefined });
+  const txt=await res.text(); let j; try{ j=JSON.parse(txt); }catch(e){ j={message:txt}; }
+  if(!res.ok) throw Object.assign(new Error(j.message||("HTTP "+res.status)), {status:res.status});
+  return j;
+}
+async function fetchRawSync(){
+  try{
+    const r=await fetch(`https://raw.githubusercontent.com/${GIT.owner}/${GIT.repo}/${GIT.branch}/${GIT.path}?v=${Date.now()}`);
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error(r.status+"");
+    return JSON.parse(await r.text());
+  }catch(e){ return null; }
+}
+async function apiGetSync(){
+  try{
+    const j=await ghApi("GET",`https://api.github.com/repos/${GIT.owner}/${GIT.repo}/contents/${GIT.path}?ref=${GIT.branch}`);
+    const payload=JSON.parse(atob(j.content.replace(/\n/g,"")));
+    return {sha:j.sha, payload};
+  }catch(e){ if(e.status===404) return {sha:null, payload:{v:1,books:{},diary:[]}}; throw e; }
+}
+function encodeB64(str){
+  const bytes=new TextEncoder().encode(str); let bin="";
+  bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin);
+}
+async function ghPut(sha, payload){
+  const body={ message:"sync: "+new Date().toISOString(), content:encodeB64(JSON.stringify(payload)), branch:GIT.branch };
+  if(sha) body.sha=sha;
+  return ghApi("PUT",`https://api.github.com/repos/${GIT.owner}/${GIT.repo}/contents/${GIT.path}`, body);
+}
+function pickOV(ov){
+  const out={};
+  for(const k of OVERRIDE) if(ov[k]!==undefined && ov[k]!==null && ov[k]!=="") out[k]=ov[k];
+  return out;
+}
+function buildSyncPayload(){
+  const books={};
+  for(const b of BOOKS){
+    const rec=Object.assign({ updatedAt:b.updatedAt||0, status:b.status||"Quero ler", tipo:b.tipo||"", nota:b.nota||0, paginasLidas:b.paginasLidas||0, comentarios:b.comentarios||"", resenha:b.resenha||"", inicio:b.inicio||null, fim:b.fim||null }, pickOV(b));
+    if(String(b.id).startsWith("imp:")) Object.assign(rec,{ title:b.title||"Sem título", author:b.author||"", paginas:b.paginas||0, genero:b.genero||"", formato:b.formato||"", idioma:b.idioma||"" });
+    books[b.id]=rec;
+  }
+  return { v:1, books, diary: DIARY.map(d=>({ id:String(d.id), bookId:d.bookId, date:d.date, pages:d.pages, note:d.note||"", ts:d.ts||Date.now() })) };
+}
+function mergePayload(a, b){
+  const books={}; Object.assign(books, a.books||{});
+  for(const [id, lb] of Object.entries(b.books||{})){
+    const rb = (a.books||{})[id];
+    if(!rb || (lb.updatedAt||0) >= (rb.updatedAt||0)) books[id]=lb;
+  }
+  const byId=new Map((a.diary||[]).map(d=>[d.id,d]));
+  for(const ld of b.diary||[]){
+    const rd=byId.get(ld.id);
+    byId.set(ld.id, (!rd || (ld.ts||0) >= (rd.ts||0)) ? ld : rd);
+  }
+  return { v:1, books, diary:[...byId.values()] };
+}
+async function pushSync(){
+  if(syncState.busy) return;
+  syncState.busy=true; syncUi();
+  try{
+    let pushed=false;
+    for(let i=0;i<3;i++){
+      const {sha, payload}=await apiGetSync();
+      const local=buildSyncPayload();
+      const merged=mergePayload(payload, local);
+      if(JSON.stringify(merged)===JSON.stringify(payload)) break;
+      try{ await ghPut(sha, merged); pushed=true; break; }
+      catch(e){ if(e.status===409 && i<2){ continue; } throw e; }
+    }
+    syncState.last=true; syncState.error=null;
+    META.lastSyncAt=Date.now(); await putOf("meta",{k:"lastSyncAt",v:META.lastSyncAt});
+    if(pushed) toast("Sincronizado ✓");
+  }catch(e){
+    const m=String(e.message||e);
+    syncState.error = m.includes("Bad credentials")||m.includes("Not Found")||m.includes("Forbidden") ? "token inválido ou sem permissão de escrita" : (e.message||"erro ao sincronizar");
+    syncState.last=false;
+  }finally{ syncState.busy=false; syncUi(); }
+}
+async function applyRemote(remote){
+  if(!remote) return;
+  // diário: união por id, mais recente ganha
+  const localById=new Map(DIARY.map(d=>[String(d.id),d]));
+  for(const rd of remote.diary||[]){
+    const l=localById.get(String(rd.id));
+    if(!l || (rd.ts||0) > (l.ts||0)) localById.set(String(rd.id), rd);
+  }
+  const diary=[...localById.values()].sort((a,b)=> a.date===b.date ? (String(b.id).localeCompare(String(a.id))) : b.date<a.date?-1:1);
+  const ds=await store("readwrite","diary"); diary.forEach(d=>ds.put(d));
+  DIARY=diary;
+  // livros: remotos mais novos que o local substituem
+  const localMap=new Map(await allOf("books").then(ls=>ls.map(b=>[b.id,b])));
+  for(const [id, ov] of Object.entries(remote.books||{})){
+    const local=localMap.get(id);
+    if(local && (local.updatedAt||0) > (ov.updatedAt||0)) continue;
+    const base={};
+    const cat=CATALOG.find(c=>c.id===id);
+    if(cat) Object.assign(base, cat);
+    const nb=Object.assign({}, base, pickOV(ov), { id, updatedAt:ov.updatedAt||0 });
+    if(!cat && !local){
+      nb.cover="";
+      nb.title=ov.title||nb.title||"Sem título";
+      nb.author=ov.author||nb.author||"";
+      nb.paginas=ov.paginas||nb.paginas||0;
+      nb.genero=ov.genero||nb.genero||"";
+      nb.formato=ov.formato||nb.formato||"";
+      nb.idioma=ov.idioma||nb.idioma||"";
+    }
+    await putOf("books", nb);
+  }
+  BOOKS=mergeCatalog(CATALOG, await allOf("books"));
+}
+async function pullSync(){
+  if(!navigator.onLine) return;
+  let remote=null;
+  if(META.githubToken){ try{ remote=(await apiGetSync()).payload; }catch(e){} }
+  if(!remote) remote=await fetchRawSync();
+  if(remote) await applyRemote(remote);
+}
+function syncStatBusy(){ syncState.busy=true; syncUi(); }
+function markDirty(){ syncUi(); if(!META.githubToken) return; clearTimeout(syncTimer); syncUi(); syncTimer=setTimeout(()=>pushSync(),1200); }
 
 /* ---------- render estante ---------- */
 function visibleBooks(){
@@ -480,6 +687,10 @@ function renderPanel(b, id, m){
       </div>
       <div class="pp"><div class="bar"><div style="width:${pc}%"></div></div><span id="pPerc">${pc}%</span></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>Comecei em</label><input type="date" id="bInicio" value="${b.inicio||""}"></div>
+      <div class="field"><label>Terminei em</label><input type="date" id="bFim" value="${b.fim||""}"></div>
+    </div>
     <div class="field"><label>Comentários</label><textarea id="bComent" placeholder="O que achou?">${(b.comentarios||"").replace(/</g,"&lt;")}</textarea></div>
     <div class="field"><label>Resenha</label><textarea id="bResenha" placeholder="Escreva sua resenha..." style="min-height:76px">${(b.resenha||"").replace(/</g,"&lt;")}</textarea></div>
     ${entries.length?`<div class="field"><label>Diário deste livro (${entries.length})</label>${entries.map(en=>`
@@ -502,7 +713,7 @@ function renderPanel(b, id, m){
     else if(act==="addEntry"){ openDiaryForm(id); }
   }));
   p.querySelectorAll(".entry .x").forEach(x=>x.addEventListener("click",async()=>{
-    const did=+x.dataset.del; await delOf("diary",did); loadData(); renderDiary();
+    const did=String(x.dataset.del); await delOf("diary",did); await loadData(); renderDiary(); markDirty();
   }));
   toast("Clique em Salvar para guardar as alterações neste aparelho.");
 }
@@ -516,6 +727,7 @@ async function saveBook(p,id){
   const b=BOOKS.find(x=>x.id===id); if(!b) return;
   const notaEl=$("#pStars",p);
   const next=Object.assign({},b);
+  next.updatedAt=Date.now();
   next.nota = notaEl?.dataset&&notaEl.dataset.nota ? +notaEl.dataset.nota : (b.nota||0);
   next.comentarios = $("#bComent",p)?.value||"";
   next.resenha = $("#bResenha",p)?.value||"";
@@ -523,12 +735,22 @@ async function saveBook(p,id){
   next.tipo = $("#bTipo",p)?.value || "";
   next.paginasLidas = +($("#bPagesLidas",p)?.value||0);
   next.paginas = +($("#bTotal",p)?.value||b.paginas||0) || next.paginas;
+  next.inicio = $("#bInicio",p)?.value || b.inicio || "";
+  next.fim = $("#bFim",p)?.value || b.fim || "";
+  if(next.status==="Lendo" && !next.inicio) next.inicio = today();
+  if(next.status==="Lido" && !next.fim) next.fim = today();
   if(next.paginas>0 && next.paginasLidas>=next.paginas) next.status="Lido";
+  const delta = next.paginasLidas - (b.paginasLidas||0);
+  if(delta>0){
+    const en={ id:uid(), bookId:next.id, date:today(), pages:delta, note:"Atualizado na estante 📚", ts:Date.now() };
+    await putOf("diary", en); DIARY.push(en);
+  }
   await putOf("books", next);
   const i=BOOKS.findIndex(x=>x.id===id); if(i>=0) BOOKS[i]=next;
   renderFilters(); renderShelves();
   closeBook();
-  toast("Salvo neste aparelho ✓");
+  toast(delta>0 ? "Salvo! Registrado no diário ✓" : "Salvo ✓");
+  markDirty();
 }
 
 /* ---------- diário ---------- */
@@ -538,7 +760,17 @@ function loadMeta(){
 }
 async function loadData(){
   BOOKS = (BOOKS.length? BOOKS : await allOf("books"));
-  DIARY = (await allOf("diary")).sort((a,b)=>(b.date===a.date? b.id-a.id : b.date<a.date?-1:1));
+  let raw = await allOf("diary");
+  let migrated=false;
+  for(const d of raw){
+    if(typeof d.id!=="string"){
+      const nd=Object.assign({},d,{ id:uid() });
+      await putOf("diary", nd); await delOf("diary", d.id);
+      migrated=true;
+    }
+  }
+  if(migrated) raw = await allOf("diary");
+  DIARY = raw.sort((a,b)=> a.date===b.date ? (String(b.id).localeCompare(String(a.id))) : b.date<a.date?-1:1);
   await loadMeta();
 }
 function streak(){
@@ -590,8 +822,23 @@ function renderDiary(){
   }
   wrap.innerHTML=html;
   wrap.querySelectorAll(".x").forEach(x=>x.addEventListener("click",async()=>{
-    await delOf("diary",+x.dataset.del); await loadData(); renderDiary();
+    await delOf("diary",String(x.dataset.del)); await loadData(); renderDiary(); markDirty();
   }));
+  renderWeek();
+}
+function renderWeek(){
+  const wrap=$("#week"); if(!wrap) return;
+  const by={}; DIARY.forEach(d=>{ const k=d.date; by[k]=(by[k]||0)+(+d.pages||0); });
+  const max=Math.max(1,...Object.values(by));
+  const days=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d); }
+  const now=today();
+  wrap.innerHTML=days.map(d=>{
+    const iso=d.toISOString().slice(0,10);
+    const v=by[iso]||0;
+    const h=Math.max(4,Math.round((v/max)*76));
+    const label=d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","").slice(0,1).toUpperCase();
+    return `<div class="wcol ${iso===now?"today":""}"><span class="v">${v? v : ""}</span><div class="bar" style="height:${h}px"></div><span class="l">${label}</span></div>`;
+  }).join("");
 }
 function fmtDate(iso){
   const [y,m,d]=iso.split("-");
@@ -608,20 +855,24 @@ async function saveDiaryEntry(){
   const bid=$("#fbook").value;
   if(!bid){ toast("Escolha um livro."); return; }
   const pages=Math.max(0,+$("#fpages").value||0);
-  const entry={ bookId:bid, date:$("#fdate").value||today(), pages, note:$("#fnote").value.trim(), ts:Date.now() };
+  const entry={ id:uid(), bookId:bid, date:$("#fdate").value||today(), pages, note:$("#fnote").value.trim(), ts:Date.now() };
   await putOf("diary", entry);
   const b=BOOKS.find(x=>x.id===bid);
   if(b){
     const next=Object.assign({},b);
+    next.updatedAt=Date.now();
     next.paginasLidas=(b.paginasLidas||0)+pages;
     if(next.paginas>0 && next.paginasLidas>=next.paginas) next.status="Lido";
     else if(next.status==="Quero ler"&&pages>0) next.status="Lendo";
+    if(next.status==="Lendo"&&!next.inicio) next.inicio=today();
+    if(next.status==="Lido"&&!next.fim) next.fim=today();
     await putOf("books", next);
     const i=BOOKS.findIndex(x=>x.id===bid); if(i>=0) BOOKS[i]=next;
   }
   $("#dform").classList.remove("open");
   await loadData(); renderShelves(); renderDiary();
   toast("Registrado! 📖");
+  markDirty();
 }
 
 /* ---------- CSV ---------- */
@@ -703,7 +954,7 @@ async function importCSV(file){
     const key=norm(rec.title);
     if(allTitles.has(key) || newBooks.some(n=>norm(n.title)===key)){ skipped++; continue; }
     allTitles.add(key);
-    newBooks.push(Object.assign({ id:"imp:"+slug(rec.title)+":"+slug(rec.author).slice(0,20) }, rec, { cover:"", progresso:0, estrelas:null, ano:null }));
+    newBooks.push(Object.assign({ id:"imp:"+slug(rec.title)+":"+slug(rec.author).slice(0,20), updatedAt:Date.now() }, rec, { cover:"", progresso:0, estrelas:null, ano:null }));
   }
   const s=await store("readwrite","books");
   newBooks.forEach(b=>s.put(b));
@@ -711,6 +962,7 @@ async function importCSV(file){
   added=newBooks.length;
   renderFilters(); renderShelves(); renderDiary();
   toast(`CSV: ${added} adicionado(s), ${skipped} duplicado(s)`);
+  if(added) markDirty();
   for(const b of newBooks.slice(0,20)){
     try{
       const q=`${encodeURIComponent(b.title)} ${encodeURIComponent(b.author)}`.trim();
@@ -805,6 +1057,8 @@ async function init(){
   await loadCatalog();
   await loadData();
   $("#loading")?.remove();
+  try{ await pullSync(); }catch(e){}
+  syncUi();
   renderFilters(); renderShelves(); renderDiary();
 
   $("#tabShelf").addEventListener("click",()=>switchTab("shelf"));
@@ -819,6 +1073,31 @@ async function init(){
   $("#btnExport").addEventListener("click",exportBackup);
   $("#btnBell").addEventListener("click",toggleBell);
   if(META.reminder){ $("#btnBell").style.opacity="1"; $("#btnBell").title="Lembrete diário (desativar)"; scheduleReminder(); }
+
+  /* sincronização */
+  $("#btnSync").addEventListener("click",()=>{ $("#syncToken").value=META.githubToken||""; syncUi(); $("#syncform").classList.add("open"); });
+  $("#syncCancel").addEventListener("click",()=>$("#syncform").classList.remove("open"));
+  $("#syncShow").addEventListener("click",e=>{ const i=$("#syncToken"); i.type=i.type==="password"?"text":"password"; e.target.textContent=i.type==="password"?"ver":"esconder"; });
+  $("#syncSave").addEventListener("click",async()=>{
+    const t=$("#syncToken").value.trim();
+    META.githubToken=t;
+    await putOf("meta",{k:"githubToken", v:t});
+    $("#syncform").classList.remove("open");
+    if(!t){ toast("Token removido — sem sincronização."); syncUi(); return; }
+    toast("Token salvo. Sincronizando…"); syncStatBusy();
+    try{ await pullSync(); await pushSync(); }catch(e){}
+    renderShelves(); renderDiary(); syncUi();
+  });
+  $("#syncNow").addEventListener("click",async()=>{
+    if(!META.githubToken){ toast("Salve o token primeiro."); return; }
+    syncStatBusy();
+    try{ await pullSync(); await pushSync(); }catch(e){}
+    renderShelves(); renderDiary(); syncUi(); toast("Sincronizado ✓");
+  });
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible" && lastTab){ pullSync().then(()=>{ if(META.githubToken&&!syncState.busy){ syncUi(); } renderShelves(); renderDiary(); }); }
+  });
+  window.addEventListener("online",()=>{ if(META.githubToken) pushSync(); });
 }
 
 init();
