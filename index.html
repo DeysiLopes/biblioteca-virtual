@@ -512,8 +512,8 @@ function mergePayload(a, b){
   }
   return { v:1, books, diary:[...byId.values()] };
 }
-async function pushSync(flush){
-  if(syncState.busy && !flush){ syncUi(); return; }
+async function pushSync(flush, force){
+  if(syncState.busy && !force){ syncUi(); return; }
   syncState.busy=true; syncUi();
   try{
     let pushed=false;
@@ -1146,7 +1146,7 @@ async function init(){
     if(!t){ toast("Token removido — sem sincronização."); syncUi(); return; }
     toast("Token salvo. Sincronizando…"); syncStatBusy();
     let err=null;
-    try{ await pullSync(); await pushSync(); }catch(e){ err=e; }
+    try{ await pullSync(); await pushSync(false, true); }catch(e){ err=e; }
     renderShelves(); renderDiary(); syncUi();
     toast(syncState.last
       ? "Sincronizado ✓"
@@ -1156,7 +1156,7 @@ async function init(){
     if(!META.githubToken){ toast("Salve o token primeiro."); return; }
     syncStatBusy();
     let err=null;
-    try{ await pullSync(); await pushSync(); }catch(e){ err=e; }
+    try{ await pullSync(); await pushSync(false, true); }catch(e){ err=e; }
     renderShelves(); renderDiary(); syncUi();
     toast(syncState.last
       ? "Sincronizado ✓"
