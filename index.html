@@ -1120,7 +1120,7 @@ function openFlip(bookId){
   const el=$("#flipview");
   const cover=b.cover?`<img src="${b.cover}" alt="" onerror="this.remove()">`:`<div class="fallback" style="--g1:${fb.g1};--g2:${fb.g2}">${fb.initials}</div>`;
   const rv=(b.resenha||"").trim();
-  el.innerHTML=`<div class="flip-book" id="fbook">
+  el.innerHTML=`<div class="flip-book">
     <div class="flip-inner">
       <div class="flip-face front">${cover}</div>
       <div class="flip-face back">
@@ -1132,7 +1132,7 @@ function openFlip(bookId){
   </div>`;
   el.classList.add("open");
   document.body.style.overflow="hidden";
-  const fbook=el.querySelector("#fbook");
+  const fbook=el.querySelector(".flip-book");
   setTimeout(()=>fbook.classList.add("flipped"),260);
   fbook.addEventListener("click",()=>{
     if(fbook.classList.contains("flipped")){ closeFlip(); openCaderno(bookId); }
