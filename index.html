@@ -162,7 +162,7 @@
   }
   #modal.open{display:block;}
   .fly-cover{
-    position:fixed; z-index:55; pointer-events:none; border-radius:4px 12px 12px 4px; overflow:hidden;
+    position:fixed; z-index:66; pointer-events:none; border-radius:4px 12px 12px 4px; overflow:hidden;
     box-shadow:0 30px 70px -20px oklch(0 0 0 / .8);
     transition:left .55s var(--ease), top .55s var(--ease), width .55s var(--ease), height .55s var(--ease);
   }
@@ -716,11 +716,28 @@ function openBook(id, rect){
   const fly=$("#fly",m);
   const fb=fallback(b.title);
   const iw=innerWidth, ih=innerHeight, isMobile=iw<760;
-  const tw = Math.min(0.46*iw, 470);
-  const th = isMobile ? Math.min(0.5*ih, 430) : Math.min(0.82*ih, 640);
-  openTarget = isMobile
-    ? { left:(iw-tw)/2, top:ih*0.04, width:tw, height:th }
-    : { left:Math.max(20,(iw-560-40-tw)/2+20), top:(ih-th)/2, width:tw, height:th };
+  const ar = (rect&&rect.height>0) ? Math.min(0.9, Math.max(0.45, rect.width/rect.height)) : 0.62;
+  let tw, th, left, top;
+  if(isMobile){
+    const sheetH=Math.min(ih, Math.max(Math.round(ih*0.62), 380));
+    const sheetTop=ih-sheetH;
+    const availH=Math.max(110, sheetTop-20);
+    th=Math.min(availH, 430);
+    tw=th*ar;
+    const maxW=iw-32;
+    if(tw>maxW){ tw=maxW; th=tw/ar; }
+    left=(iw-tw)/2;
+    top=Math.max(8,(sheetTop-th)/2);
+  }else{
+    const panelW=Math.min(560,iw);
+    const availW=Math.max(120, iw-panelW-48);
+    th=Math.min(Math.round(ih*0.82), 640, ih-40);
+    tw=th*ar;
+    if(tw>availW){ tw=availW; th=tw/ar; }
+    left=Math.max(18,(iw-panelW-tw)/2);
+    top=(ih-th)/2;
+  }
+  openTarget = { left, top, width:tw, height:th };
   let flyHtml = b.cover
     ? `<img src="${b.cover}" alt="${(b.title||"").replace(/"/g,"&quot;")}" onerror="this.style.display='none'">`
     : "";

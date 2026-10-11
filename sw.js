@@ -1,4 +1,4 @@
-const VERSION = "bib-v13";
+const VERSION = "bib-v14";
 const PRECACHE = [
   "./",
   "./index.html",
