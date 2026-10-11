@@ -517,13 +517,17 @@ async function pushSync(flush, force){
   syncState.busy=true; syncUi();
   try{
     let pushed=false;
-    for(let i=0;i<3;i++){
+    for(let i=0;i<6;i++){
       const {sha, payload}=await apiGetSync();
       const local=buildSyncPayload();
       const merged=mergePayload(payload, local);
-      if(JSON.stringify(merged)===JSON.stringify(payload)) break;
+      if(JSON.stringify(merged)===JSON.stringify(payload)){ break; }
       try{ await ghPut(sha, merged, flush); pushed=true; break; }
-      catch(e){ if(e.status===409 && i<2){ continue; } throw e; }
+      catch(e){
+        const m=String(e.message||e);
+        if((e.status===409 || e.status===422 || m.includes("does not match")) && i<5){ continue; }
+        throw e;
+      }
     }
     syncState.last=true; syncState.error=null;
     META.lastSyncAt=Date.now(); await putOf("meta",{k:"lastSyncAt",v:META.lastSyncAt});
@@ -541,6 +545,8 @@ async function pushSync(flush, force){
       msg="token sem permissão de escrita — no GitHub marque Contents → Read and write";
     else if(m.includes("not found")||m.includes("404"))
       msg="token sem acesso à leitura — selecione o repositório biblioteca-virtual";
+    else if(m.includes("does not match")||m.includes("conflict")||m.includes("409")||m.includes("422"))
+      msg="aparelhos sincronizaram ao mesmo tempo — seus dados estão salvos neste aparelho; toque de novo e tudo se junta";
     else msg = (e&&e.message)||"erro ao sincronizar";
     syncState.error=msg;
     syncState.last=false;
