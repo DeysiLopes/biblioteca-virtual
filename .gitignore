@@ -1,3 +1,9 @@
 /bugs/
 /.agents/
 /.aiwf/
+
+# Variáveis de ambiente (credenciais locais — NÃO commitar)
+.env
+.env.local
+.env.*.local
+!.env.example
