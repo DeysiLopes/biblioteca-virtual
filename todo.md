@@ -43,6 +43,23 @@ Na aba Estante, livros com status “Lido” devem ficar em uma seção de prate
 - [ ] Preservar IDs, progresso, datas, comentários, notas, resenhas, citações e registros: a mudança é de organização visual, não exclusão ou novo cadastro.
 - [ ] Testar mudança de status, consulta de livros já lidos, recarga/sincronização e layout em telas pequenas.
 
+### Exclusão e sincronização das citações
+
+Problema relatado: a resenha apagada foi atualizada, mas a exclusão de uma citação não foi refletida corretamente no fichário do app. Verificar tanto a exclusão local quanto a sincronização, especialmente ao apagar a última citação.
+
+Ponto observado no código: `pickOV` ignora arrays vazios. Assim, `citacoes: []` é descartado na montagem do payload e na aplicação de dados remotos. Já `buildSyncPayload` inclui um valor padrão para `resenha`, mas não para uma lista de citações explicitamente vazia. Essa diferença é uma hipótese a validar com reprodução isolada, não uma confirmação completa da causa do problema relatado.
+
+- [ ] Reproduzir a exclusão da última citação e a exclusão de uma entre várias, verificando o momento em que a interface deixa de atualizar ou o item reaparece.
+- [ ] Conferir `delCitacao`, a gravação no IndexedDB, `BOOKS`, a aba selecionada, o contador do livro e o estado vazio do fichário.
+- [ ] Verificar se a alteração é enviada por `markDirty`/`pushSync` e se erros, ausência de token ou operação offline são comunicados corretamente.
+- [ ] Revisar `pickOV`, `buildSyncPayload`, `mergePayload`, `applyRemote` e `mergeCatalog`: diferenciar campo ausente de uma exclusão explícita representada por `citacoes: []`.
+- [ ] Garantir que catálogo, cache ou pull remoto não restaurem citações que foram apagadas.
+- [ ] Conferir `updatedAt`, conflitos entre aparelhos e possíveis corridas entre a confirmação da exclusão, eventos de foco do navegador, pull e push.
+- [ ] Testar fechar/reabrir o fichário, recarregar o app, sincronizar manualmente e abrir no Edge/PWA ou em outro aparelho.
+- [ ] Comparar o comportamento com a limpeza de resenha e preservar o funcionamento correto de campos vazios.
+- [ ] Criar testes isolados para excluir uma citação, excluir a última, cancelar exclusão e receber uma lista vazia por sincronização, sem enviar dados de teste ao `data/sync.json` real.
+- [ ] Não limpar ou apagar `data/sync.json` como tentativa de correção; preservar as demais citações, livros, resenhas e o histórico de leitura.
+
 ## Objetivo
 
 Permitir informar o ISBN de um livro, consultar uma API de metadados e revisar os dados encontrados antes de adicionar o livro ou completar seu cadastro na Minha Biblioteca.
