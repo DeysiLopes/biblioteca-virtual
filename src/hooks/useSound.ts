@@ -1,23 +1,29 @@
 import { useState, useRef, useCallback } from 'react';
 
 export function useSound() {
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Cria/libera o AudioContext dentro de um gesto do usuário (tecla ou clique)
+  const ensureCtx = useCallback(async () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!audioCtxRef.current && AudioCtx) {
+        audioCtxRef.current = new AudioCtx();
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        await audioCtxRef.current.resume();
+      }
+      return audioCtxRef.current;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const toggleSound = useCallback(async () => {
     if (!soundEnabled) {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (!audioCtxRef.current && AudioCtx) {
-          audioCtxRef.current = new AudioCtx();
-        }
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-          await audioCtxRef.current.resume();
-        }
-        setSoundEnabled(true);
-      } catch (err) {
-        console.warn('Não foi possível iniciar o áudio:', err);
-      }
+      const ctx = await ensureCtx();
+      if (ctx) setSoundEnabled(true);
     } else {
       if (audioCtxRef.current) {
         await audioCtxRef.current.close().catch(() => {});
@@ -25,11 +31,12 @@ export function useSound() {
       }
       setSoundEnabled(false);
     }
-  }, [soundEnabled]);
+  }, [soundEnabled, ensureCtx]);
 
-  const playTypewriterKey = useCallback((newline: boolean = false) => {
-    if (!soundEnabled || !audioCtxRef.current || audioCtxRef.current.state !== 'running') return;
-    const ctx = audioCtxRef.current;
+  const playTypewriterKey = useCallback(async (newline: boolean = false) => {
+    if (!soundEnabled) return;
+    const ctx = await ensureCtx();
+    if (!ctx || ctx.state !== 'running') return;
     const now = ctx.currentTime;
     const duration = newline ? 0.12 : 0.045;
     const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
@@ -59,7 +66,7 @@ export function useSound() {
     };
 
     key.start(now);
-  }, [soundEnabled]);
+  }, [soundEnabled, ensureCtx]);
 
   return {
     soundEnabled,

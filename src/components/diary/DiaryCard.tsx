@@ -1,6 +1,6 @@
 import React from 'react';
 import { Book } from '../../core/models/book';
-import { getBookFallback } from '../book/BookCard';
+import { getBookFallback, getBookCover, hideTinyCover } from '../book/BookCard';
 import { calculatePercentage } from '../../core/business/progress';
 
 interface DiaryCardProps {
@@ -82,10 +82,11 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <div className="fallback" style={{ fontSize: 20 }}>
             {fb.initials}
           </div>
-          {book.cover ? (
+          {getBookCover(book) ? (
             <img
-              src={book.cover}
+              src={getBookCover(book)}
               alt={book.title}
+              onLoad={hideTinyCover}
               style={{
                 position: 'absolute',
                 inset: 0,

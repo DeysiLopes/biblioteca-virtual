@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Book } from '../../core/models/book';
-import { getBookFallback } from './BookCard';
+import { getBookFallback, getBookCover, hideTinyCover } from './BookCard';
 
 interface FlipBookProps {
   book: Book;
@@ -204,10 +204,11 @@ export const FlipBook: React.FC<FlipBookProps> = ({
             }
           >
             <div className="fallback">{fb.initials}</div>
-            {book.cover ? (
+            {getBookCover(book) ? (
               <img
-                src={book.cover}
+                src={getBookCover(book)}
                 alt={book.title}
+                onLoad={hideTinyCover}
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
                 }}

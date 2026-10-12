@@ -185,6 +185,7 @@ export function importBooksContent(
     const fim = pick(row, ['fim', 'data fim', 'date finish', 'finish', 'date read']);
     const comentarios = pick(row, ['comentarios', 'comentarios', 'comments', 'notes', 'my notes', 'notas']);
     const resenha = pick(row, ['resenha', 'review', 'my review', 'rating text']);
+    const codigo_isbn = pick(row, ['codigo_isbn', 'isbn', 'isbn13', 'isbn-13', 'isbn10', 'isbn-10']);
 
     rawBooks.push({
       title,
@@ -200,6 +201,7 @@ export function importBooksContent(
       fim,
       comentarios,
       resenha,
+      codigo_isbn,
     });
   }
 
@@ -251,6 +253,7 @@ function processRawBooks(rawBooks: any[], existingBooks: Book[]): ImportBatchRes
       comentarios: r.comentarios ? String(r.comentarios).trim() : '',
       resenha: r.resenha ? String(r.resenha).trim() : '',
       cover: r.cover || '',
+      codigo_isbn: r.codigo_isbn ? String(r.codigo_isbn).replace(/[^0-9X]/gi, '').toUpperCase() : null,
       citacoes: Array.isArray(r.citacoes) ? r.citacoes : [],
       deletedCitacoes: Array.isArray(r.deletedCitacoes) ? r.deletedCitacoes : [],
       readingEpoch: r.readingEpoch || (paginasLidas > 0 ? Date.now() : 0),

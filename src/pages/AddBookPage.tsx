@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLibrary } from '../hooks/useLibrary';
 import { Book, BookStatus } from '../core/models/book';
-import { fetchBookByISBN } from '../core/business/open-library';
+import {
+  fetchBookByISBN,
+  findMetadataForBook,
+  applyMetadata,
+  needsMetadata,
+  OpenLibraryRateLimitError,
+  type OpenLibrarySearchResult,
+} from '../core/business/open-library';
 import { importBooksContent } from '../core/business/csv-parser';
 
 export const AddBookPage: React.FC = () => {
   const navigate = useNavigate();
   const { books, saveBook, saveBatch } = useLibrary();
 
-  const [tab, setTab] = useState<'isbn' | 'manual' | 'import'>('isbn');
+  const [tab, setTab] = useState<'isbn' | 'manual' | 'import' | 'enrich'>('isbn');
 
   // Form states
   const [isbnInput, setIsbnInput] = useState('');
@@ -22,8 +29,18 @@ export const AddBookPage: React.FC = () => {
   const [genero, setGenero] = useState('');
   const [paginas, setPaginas] = useState<number | ''>('');
   const [cover, setCover] = useState('');
+  const [codigoIsbn, setCodigoIsbn] = useState('');
   const [comentarios, setComentarios] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Enriquecimento em lote (ISBN + capa via Open Library)
+  const [enriching, setEnriching] = useState(false);
+  const [enrichLog, setEnrichLog] = useState<string[]>([]);
+  const [importEnrich, setImportEnrich] = useState<string | null>(null);
+  const booksRef = useRef(books);
+  useEffect(() => {
+    booksRef.current = books;
+  }, [books]);
 
   // Import batch states
   const [importText, setImportText] = useState('');
@@ -44,6 +61,7 @@ export const AddBookPage: React.FC = () => {
       setAuthor(result.author);
       if (result.paginas) setPaginas(result.paginas);
       if (result.cover) setCover(result.cover);
+      if (result.isbn) setCodigoIsbn(result.isbn);
       setIsbnMessage('Metadados encontrados com sucesso! Confira e salve abaixo.');
       setTab('manual');
     } else {
@@ -69,6 +87,7 @@ export const AddBookPage: React.FC = () => {
       paginas: typeof paginas === 'number' ? paginas : null,
       paginasLidas: 0,
       cover: cover.trim() || '',
+      codigo_isbn: codigoIsbn.replace(/[^0-9X]/gi, '').toUpperCase() || null,
       comentarios: comentarios.trim() || '',
       citacoes: [],
       deletedCitacoes: [],
@@ -77,7 +96,15 @@ export const AddBookPage: React.FC = () => {
     };
 
     try {
-      await saveBook(newBook);
+      // Busca ISBN/capa na Open Library antes de salvar (best-effort)
+      let enriched = newBook;
+      try {
+        const meta = await findMetadataForBook(newBook);
+        enriched = applyMetadata(newBook, meta) || newBook;
+      } catch {
+        // rede indisponível não impede o cadastro
+      }
+      await saveBook(enriched);
       alert(`Livro "${title}" adicionado com sucesso!`);
       navigate('/estante');
     } catch (err) {
@@ -124,6 +151,106 @@ export const AddBookPage: React.FC = () => {
       `✓ Sucesso! ${added.length} livro(s) importado(s) com sucesso. (${skippedCount} ignorados por duplicidade).`
     );
     setImportText('');
+
+    // Enriquece ISBN/capa em segundo plano — o usuário pode sair da página
+    const pending = added.filter(needsMetadata);
+    if (pending.length > 0) {
+      setImportEnrich(`Buscando ISBN e capas em segundo plano (0/${pending.length})...`);
+      void enrichBooksInBackground(pending, (done, total) =>
+        setImportEnrich(
+          done < total
+            ? `Buscando ISBN e capas em segundo plano (${done}/${total})...`
+            : `✨ ISBN/capas: busca concluída para ${total} livro(s).`
+        )
+      );
+    }
+  };
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Busca metadados com uma retentativa após 30s quando a OL limita (429)
+  const findMetaWithRetry = async (
+    b: Book,
+    onRateLimit?: () => void
+  ): Promise<OpenLibrarySearchResult | null> => {
+    try {
+      return await findMetadataForBook(b);
+    } catch (e) {
+      if (e instanceof OpenLibraryRateLimitError) {
+        onRateLimit?.();
+        await sleep(30000);
+        return await findMetadataForBook(b);
+      }
+      return null;
+    }
+  };
+
+  const enrichBooksInBackground = async (
+    list: Book[],
+    onProgress: (done: number, total: number) => void
+  ) => {
+    for (let i = 0; i < list.length; i++) {
+      try {
+        const meta = await findMetaWithRetry(list[i]);
+        // Aplica sobre a versão mais recente para não sobrescrever edições
+        const current =
+          booksRef.current.find((x) => x.id === list[i].id) || list[i];
+        const updated = applyMetadata(current, meta);
+        if (updated) await saveBook(updated);
+      } catch {
+        // limite persistente (429 mesmo após retentativa): encerra a fila
+        break;
+      }
+      onProgress(i + 1, list.length);
+      if (i < list.length - 1) await sleep(1500);
+    }
+  };
+
+  const handleEnrichLibrary = async () => {
+    if (enriching) return;
+    const candidates = books.filter(needsMetadata);
+    if (!candidates.length) {
+      setEnrichLog(['Todos os livros já têm ISBN e capa. Nada a fazer. ✨']);
+      return;
+    }
+
+    setEnriching(true);
+    setEnrichLog([`Buscando metadados para ${candidates.length} livro(s) na Open Library...`]);
+    const log = (line: string) => setEnrichLog((prev) => [...prev, line]);
+    let found = 0;
+    let missed = 0;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const b = candidates[i];
+      try {
+        const meta = await findMetaWithRetry(b, () =>
+          log('⏳ Limite da Open Library atingido — aguardando 30s...')
+        );
+        const current =
+          booksRef.current.find((x) => x.id === b.id) || b;
+        const updated = applyMetadata(current, meta);
+        if (updated) {
+          await saveBook(updated);
+          found++;
+          log(`✓ ${b.title}${meta?.isbn ? ` → ISBN ${meta.isbn}` : ' → capa encontrada'}`);
+        } else {
+          missed++;
+          log(`— ${b.title}: sem correspondência confiável`);
+        }
+      } catch (e) {
+        if (e instanceof OpenLibraryRateLimitError) {
+          log('🚫 Open Library segue limitando — varredura pausada. Tente de novo em alguns minutos.');
+          break;
+        }
+        missed++;
+        log(`— ${b.title}: falha na consulta`);
+      }
+      // Open Library: ~1 req/s para uso público
+      if (i < candidates.length - 1) await sleep(1500);
+    }
+
+    log(`Concluído: ${found} atualizado(s), ${missed} sem resultado.`);
+    setEnriching(false);
   };
 
   return (
@@ -151,6 +278,12 @@ export const AddBookPage: React.FC = () => {
           onClick={() => setTab('import')}
         >
           📂 Importar CSV / JSON
+        </button>
+        <button
+          className={`pill ${tab === 'enrich' ? 'on' : ''}`}
+          onClick={() => setTab('enrich')}
+        >
+          ✨ Capas & ISBN
         </button>
       </div>
 
@@ -319,7 +452,7 @@ export const AddBookPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div className="field">
               <label htmlFor="mPaginas" style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>
                 Total de páginas:
@@ -332,6 +465,27 @@ export const AddBookPage: React.FC = () => {
                 onChange={(e) =>
                   setPaginas(e.target.value === '' ? '' : parseInt(e.target.value, 10))
                 }
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  background: 'var(--paper)',
+                  color: 'var(--ink)',
+                  border: '1px solid var(--line)',
+                }}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="mIsbn" style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>
+                ISBN (codigo_isbn):
+              </label>
+              <input
+                id="mIsbn"
+                type="text"
+                placeholder="Ex: 9788535902778"
+                value={codigoIsbn}
+                onChange={(e) => setCodigoIsbn(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -460,6 +614,22 @@ export const AddBookPage: React.FC = () => {
             </div>
           )}
 
+          {importEnrich && (
+            <div
+              style={{
+                background: 'oklch(0.24 0.04 40 / 0.8)',
+                border: '1px solid var(--accent)',
+                padding: '10px 14px',
+                borderRadius: 8,
+                marginBottom: 14,
+                fontSize: 13,
+                color: 'var(--ink)',
+              }}
+            >
+              {importEnrich}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleImportBatch}
@@ -475,6 +645,63 @@ export const AddBookPage: React.FC = () => {
           >
             Processar e Importar Livros
           </button>
+        </div>
+      )}
+
+      {/* Tab 4: Enriquecimento em lote */}
+      {tab === 'enrich' && (
+        <div
+          style={{
+            background: 'var(--paper2)',
+            padding: 20,
+            borderRadius: 12,
+            border: '1px solid var(--line)',
+          }}
+        >
+          <p style={{ margin: '0 0 12px', color: 'var(--ink2)', fontSize: 14 }}>
+            Procura cada livro da estante na Open Library pelo título e autor, e preenche{' '}
+            <code>codigo_isbn</code> e a capa quando encontra uma correspondência confiável.
+            Livros que já têm ISBN e capa são ignorados — nada é sobrescrito.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleEnrichLibrary}
+            disabled={enriching}
+            style={{
+              padding: '10px 20px',
+              borderRadius: 8,
+              background: 'var(--accent)',
+              color: '#17100f',
+              fontWeight: 800,
+              border: 'none',
+              cursor: enriching ? 'wait' : 'pointer',
+              opacity: enriching ? 0.7 : 1,
+            }}
+          >
+            {enriching ? 'Buscando...' : '✨ Buscar capas e ISBN para a estante'}
+          </button>
+
+          {enrichLog.length > 0 && (
+            <div
+              style={{
+                marginTop: 14,
+                maxHeight: 260,
+                overflowY: 'auto',
+                background: 'oklch(0 0 0 / 0.25)',
+                border: '1px solid var(--line)',
+                borderRadius: 8,
+                padding: '10px 12px',
+                fontFamily: 'monospace',
+                fontSize: 12.5,
+                lineHeight: 1.7,
+                color: 'var(--ink)',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {enrichLog.join('\n')}
+            </div>
+          )}
         </div>
       )}
     </div>

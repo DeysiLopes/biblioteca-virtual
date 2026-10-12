@@ -1,18 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Book, Citacao } from '../../core/models/book';
 import {
-  CIT_PASTEL,
   getQuoteColor,
   saveQuoteToBook,
   deleteQuoteFromBook,
 } from '../../core/business/quotes';
 import { QuoteReader } from './QuoteReader';
+import { useSound } from '../../hooks/useSound';
 
 interface FicharioModalProps {
   book: Book;
   isOpen: boolean;
   onClose: () => void;
   onSaveBook: (updatedBook: Book) => Promise<void>;
+}
+
+interface TurningPage {
+  quote: Citacao;
+  color: string;
 }
 
 export const FicharioModal: React.FC<FicharioModalProps> = ({
@@ -27,6 +32,10 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
   const [editPage, setEditPage] = useState<number | ''>('');
   const [readerQuote, setReaderQuote] = useState<Citacao | null>(null);
   const [saving, setSaving] = useState(false);
+  const [turning, setTurning] = useState<TurningPage | null>(null);
+  const turnTimer = useRef<number>(0);
+  const writeRef = useRef<HTMLTextAreaElement>(null);
+  const { soundEnabled, toggleSound, playTypewriterKey } = useSound();
 
   const quotes = Array.isArray(book?.citacoes) ? book.citacoes : [];
 
@@ -55,13 +64,39 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, readerQuote]);
 
+  useEffect(() => {
+    return () => window.clearTimeout(turnTimer.current);
+  }, []);
+
   if (!isOpen || !book) return null;
 
   const activeIndex = quotes.findIndex(q => q.id === selectedQuoteId);
   const activeQuote = activeIndex >= 0 ? quotes[activeIndex] : null;
-  const paperColor = activeIndex >= 0 ? getQuoteColor(activeIndex) : CIT_PASTEL[0];
+  // Ficha nova já veste a cor pastel que a aba dela vai receber ao salvar
+  const paperColor =
+    activeIndex >= 0 ? getQuoteColor(activeIndex) : getQuoteColor(quotes.length);
+
+  const reducedMotion =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // A ficha exibida vira sobre as argolas, revelando a próxima folha
+  const triggerTurn = () => {
+    if (!activeQuote || isEditing || reducedMotion) return;
+    setTurning({ quote: activeQuote, color: paperColor });
+    window.clearTimeout(turnTimer.current);
+    turnTimer.current = window.setTimeout(() => setTurning(null), 800);
+  };
+
+  const handleSelectQuote = (q: Citacao) => {
+    if (q.id === selectedQuoteId && !isEditing) return;
+    triggerTurn();
+    setIsEditing(false);
+    setSelectedQuoteId(q.id);
+  };
 
   const handleStartAdd = () => {
+    triggerTurn();
     setIsEditing(true);
     setSelectedQuoteId(null);
     setEditText('');
@@ -70,6 +105,7 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
 
   const handleStartEdit = () => {
     if (!activeQuote) return;
+    triggerTurn();
     setIsEditing(true);
     setEditText(activeQuote.text);
     setEditPage(activeQuote.page);
@@ -125,6 +161,7 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
 
     setSaving(true);
     try {
+      triggerTurn();
       const updatedBook = deleteQuoteFromBook(book, activeQuote.id);
       await onSaveBook(updatedBook);
       setSelectedQuoteId(null);
@@ -135,11 +172,21 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
     }
   };
 
+  const handleTyping = (value: string) => {
+    setEditText(value);
+    const el = writeRef.current;
+    if (el) {
+      el.classList.remove('typing');
+      void el.offsetWidth;
+      el.classList.add('typing');
+    }
+  };
+
   return (
     <>
       <div
         id="fichario"
-        className="open"
+        className="open focused"
         role="dialog"
         aria-modal="true"
         onClick={(e) => {
@@ -150,74 +197,41 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
           <div className="fic-paper" style={{ background: paperColor }}>
             {/* Argolas metálicas à esquerda */}
             <div className="fic-rings">
-              <span /><span /><span /><span /><span /><span />
+              <i /><i /><i /><i /><i /><i />
             </div>
 
             {/* Cabeçalho */}
-            <div className="fic-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#6d5a49' }}>
-                  Fichário de Citações
-                </span>
-                <h3 className="serif" style={{ fontSize: 22, margin: 0, color: '#2b221a' }}>
-                  {book.title}
-                </h3>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div className="fic-head">
+              <h2 className="serif">{book.title}</h2>
+              <div className="fic-toolbar">
                 {!isEditing && (
-                  <button
-                    className="hbtn"
-                    onClick={handleStartAdd}
-                    style={{ background: '#2b221a', color: '#efdfc8', borderColor: '#2b221a' }}
-                  >
+                  <button className="mbtn primary" onClick={handleStartAdd}>
                     ＋ Nova ficha
                   </button>
                 )}
-                <button
-                  className="hbtn ghost"
-                  onClick={onClose}
-                  style={{ color: '#2b221a', borderColor: '#6d5a49' }}
-                >
+                <button className="mbtn ghost2" onClick={onClose} aria-label="Fechar fichário">
                   ✕
                 </button>
               </div>
             </div>
+            <div className="sub">Fichário de citações — folheie pelas abas coloridas</div>
 
-            {/* Corpo */}
-            <div className="fic-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', marginTop: 14 }}>
+            {/* Corpo — key remonta a folha para a animação de entrada */}
+            <div className="fic-body" key={isEditing ? `edit-${selectedQuoteId ?? 'new'}` : (selectedQuoteId ?? 'empty')}>
               {isEditing ? (
-                <form onSubmit={handleSaveQuote} style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#4a3b2c', marginBottom: 4 }}>
-                      Texto da citação:
-                    </label>
-                    <textarea
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      placeholder="“Digite o trecho do livro aqui...”"
-                      required
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        minHeight: 180,
-                        background: 'oklch(1 0 0 / 0.5)',
-                        border: '1.5px dashed #8d735a',
-                        borderRadius: 8,
-                        padding: 12,
-                        fontFamily: '"Courier New", monospace',
-                        fontSize: 15,
-                        lineHeight: 1.6,
-                        color: '#1a1009',
-                        resize: 'none',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#4a3b2c' }}>
-                        Página (obrigatória):
-                      </label>
+                <form className="cform" onSubmit={handleSaveQuote}>
+                  <textarea
+                    ref={writeRef}
+                    value={editText}
+                    onChange={(e) => handleTyping(e.target.value)}
+                    onKeyDown={(e) => playTypewriterKey(e.key === 'Enter')}
+                    placeholder="“Digite o trecho do livro aqui...”"
+                    required
+                    aria-label="Texto da citação"
+                  />
+                  <div className="row" style={{ gridTemplateColumns: 'minmax(0,1fr) auto auto auto' }}>
+                    <label className="pgwrap">
+                      Página (obrigatória)
                       <input
                         type="number"
                         min={1}
@@ -225,138 +239,49 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
                         onChange={(e) => setEditPage(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
                         placeholder="Ex: 42"
                         required
-                        style={{
-                          width: 80,
-                          padding: '6px 8px',
-                          borderRadius: 6,
-                          border: '1.5px solid #8d735a',
-                          background: '#fff',
-                          fontWeight: 700,
-                          color: '#2b221a',
-                        }}
                       />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {quotes.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleCancelEdit}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: 6,
-                            background: 'transparent',
-                            border: '1px solid #6d5a49',
-                            color: '#2b221a',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Cancelar
-                        </button>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        style={{
-                          padding: '6px 16px',
-                          borderRadius: 6,
-                          background: '#2b221a',
-                          color: '#efdfc8',
-                          border: 'none',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {saving ? 'Gravando...' : 'Salvar Ficha'}
+                    </label>
+                    <button
+                      type="button"
+                      className="mbtn ghost2"
+                      aria-pressed={soundEnabled}
+                      onClick={toggleSound}
+                    >
+                      Som: {soundEnabled ? 'ligado' : 'desligado'}
+                    </button>
+                    {quotes.length > 0 && (
+                      <button type="button" className="mbtn ghost2" onClick={handleCancelEdit}>
+                        Cancelar
                       </button>
-                    </div>
+                    )}
+                    <button type="submit" className="mbtn primary" disabled={saving}>
+                      {saving ? 'Gravando...' : 'Salvar Ficha'}
+                    </button>
                   </div>
                 </form>
               ) : activeQuote ? (
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-                  <div style={{ margin: 'auto 0', padding: '16px 20px', textAlign: 'center' }}>
-                    <p
-                      className="serif"
-                      style={{
-                        fontSize: 22,
-                        fontStyle: 'italic',
-                        lineHeight: 1.6,
-                        color: '#2b221a',
-                        margin: 0,
-                      }}
-                    >
-                      “{activeQuote.text}”
-                    </p>
-                    <p style={{ marginTop: 16, fontWeight: 700, fontSize: 14, color: '#6d5a49' }}>
-                      página {activeQuote.page}
-                    </p>
+                <div className="fic-view">
+                  <div className="fic-quote">
+                    <span className="fic-quote-text">{activeQuote.text}</span>
                   </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #a48c77', paddingTop: 10 }}>
-                    <button
-                      onClick={handleDeleteQuote}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#8b2d2d',
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
+                  <div className="fic-page-number">página {activeQuote.page}</div>
+                  <div className="fic-actions">
+                    <button className="mbtn ghost2" onClick={handleDeleteQuote}>
                       🗑 Excluir
                     </button>
-
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        onClick={() => setReaderQuote(activeQuote)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: 6,
-                          background: 'oklch(1 0 0 / 0.5)',
-                          border: '1px solid #7d6550',
-                          color: '#2b221a',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        📖 Ler página
-                      </button>
-                      <button
-                        onClick={handleStartEdit}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: 6,
-                          background: '#2b221a',
-                          color: '#efdfc8',
-                          border: 'none',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ✎ Editar
-                      </button>
-                    </div>
+                    <span style={{ flex: 1 }} />
+                    <button className="mbtn ghost2" onClick={() => setReaderQuote(activeQuote)}>
+                      📖 Ler página
+                    </button>
+                    <button className="mbtn primary" onClick={handleStartEdit}>
+                      ✎ Editar
+                    </button>
                   </div>
                 </div>
               ) : (
-                <div style={{ margin: 'auto', textAlign: 'center' }}>
-                  <p style={{ color: '#6d5a49', fontStyle: 'italic' }}>
-                    Nenhuma citação registrada para este livro.
-                  </p>
-                  <button
-                    onClick={handleStartAdd}
-                    style={{
-                      marginTop: 8,
-                      padding: '8px 16px',
-                      borderRadius: 8,
-                      background: '#2b221a',
-                      color: '#efdfc8',
-                      border: 'none',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
+                <div className="fic-empty">
+                  <p>Nenhuma citação registrada para este livro.</p>
+                  <button className="mbtn primary" onClick={handleStartAdd}>
                     ＋ Adicionar primeira citação
                   </button>
                 </div>
@@ -364,24 +289,37 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
             </div>
           </div>
 
+          {/* Folha virando sobre as argolas (mostra a ficha anterior) */}
+          {turning && (
+            <div
+              className="fic-leaf"
+              aria-hidden="true"
+              onAnimationEnd={() => setTurning(null)}
+            >
+              <div className="fic-leaf-face front" style={{ background: turning.color }}>
+                <div className="fic-leaf-quote">
+                  “{turning.quote.text}”
+                  <span className="fic-leaf-pg">página {turning.quote.page}</span>
+                </div>
+              </div>
+              <div className="fic-leaf-face back" style={{ background: turning.color }} />
+            </div>
+          )}
+
           {/* Abas laterais pastel à direita */}
           {quotes.length > 0 && (
             <div className="fic-tabs" role="tablist">
               {quotes.map((q, idx) => {
                 const isSelected = q.id === selectedQuoteId;
-                const tabColor = getQuoteColor(idx);
                 return (
                   <button
                     key={q.id}
                     role="tab"
                     aria-selected={isSelected}
-                    onClick={() => {
-                      setIsEditing(false);
-                      setSelectedQuoteId(q.id);
-                    }}
+                    onClick={() => handleSelectQuote(q)}
                     className={`fic-tab ${isSelected ? 'active' : ''}`}
                     style={{
-                      background: tabColor,
+                      background: getQuoteColor(idx),
                       color: '#2b221a',
                       borderLeft: isSelected ? 'none' : '1px solid #8d735a',
                       fontWeight: isSelected ? 800 : 600,

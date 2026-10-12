@@ -78,6 +78,8 @@ Ferramentas de automação do usuário (fora do repo, em `~/.local/bin`):
   id,            // string (ex.: UUID do Notion ou slug)
   title, author,
   cover,         // URL da capa
+  codigo_isbn,   // ISBN-10/13 normalizado (sem hífens); preenchido pela
+                 // aba "✨ Capas & ISBN" em /books ou pela busca por ISBN
   status,        // ex.: "Lendo"
   nota,          // 0..5
   resenha,       // texto da resenha (editável no caderno)
@@ -159,6 +161,20 @@ Mudanças commitadas não apareciam no navegador.
 
 - Capas de Open Library e Google Books são cacheadas com estratégia cache-first para
   funcionar offline. Respostas `ok` ou `opaque` são armazenadas no cache do SW.
+
+### Integração Open Library (`src/core/business/open-library.ts`)
+
+- `fetchBookByISBN(isbn)`: consulta `/isbn/{isbn}.json`; prefere `covers[0]` da edição
+  (`b/id/{cover_i}-L.jpg`) — o endpoint `b/isbn/` devolve um GIF 1×1 transparente
+  quando a edição não tem capa.
+- `searchBookByTitleAuthor(title, author)`: busca `/search.json` e só aceita docs cujo
+  título corresponde (normalizado, sem acentos) — prefere ISBN-13 978/979 e `cover_i`.
+- **Automático**: cadastro manual busca metadados antes de salvar; importação
+  CSV/JSON enriquece em segundo plano. Só campos vazios são preenchidos.
+- Aba **"✨ Capas & ISBN"** em `/books`: varredura manual da estante, ~1 req/s
+  (limite público da OL), com log por livro.
+- `getBookCover(book)` (BookCard): usa `book.cover`, senão deriva de `codigo_isbn`;
+  `hideTinyCover` esconde placeholders ≤4px para o gradiente aparecer.
 
 ### Notificações (v24+)
 

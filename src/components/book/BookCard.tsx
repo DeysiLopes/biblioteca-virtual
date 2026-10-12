@@ -27,6 +27,23 @@ export function getBookFallback(title: string) {
   };
 }
 
+export function getBookCover(book: Book): string {
+  if (book.cover) return book.cover;
+  if (book.codigo_isbn) {
+    return `https://covers.openlibrary.org/b/isbn/${book.codigo_isbn}-L.jpg`;
+  }
+  return '';
+}
+
+// A Open Library devolve um GIF 1x1 quando não há capa — esconde
+// imagens minúsculas para o fallback colorido aparecer no lugar
+export function hideTinyCover(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  if (img.naturalWidth > 0 && img.naturalWidth <= 4) {
+    img.style.display = 'none';
+  }
+}
+
 export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick }) => {
   const fb = getBookFallback(book.title);
   let h = 86 + (hashHue(book.title || '') % 54);
@@ -57,11 +74,12 @@ export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick
         title={tip}
       >
         <div className="fallback">{fb.initials}</div>
-        {book.cover ? (
+        {getBookCover(book) ? (
           <img
             loading="lazy"
-            src={book.cover}
+            src={getBookCover(book)}
             alt={book.title}
+            onLoad={hideTinyCover}
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
             }}

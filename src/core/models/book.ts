@@ -30,6 +30,7 @@ export interface Book {
   comentarios?: string;
   resenha?: string;
   cover?: string;
+  codigo_isbn?: string | null;
   readingEpoch?: number;
   citacoes?: Citacao[];
   deletedCitacoes?: DeletedCitacao[];

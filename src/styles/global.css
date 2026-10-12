@@ -293,7 +293,7 @@
   #fichario{ position:fixed; inset:0; z-index:85; display:none; padding:24px; background:oklch(0.15 0.03 35 / .64); backdrop-filter:blur(7px); transition:background .45s ease,backdrop-filter .45s ease; }
   #fichario.open{ display:flex; align-items:center; justify-content:center; }
   #fichario.focused{ background:oklch(0.13 0.02 40 / .86); backdrop-filter:blur(11px); }
-  .fic-shell{ position:relative; width:min(100%,680px); height:min(78dvh,690px); max-height:calc(100dvh - 48px); border-radius:20px; background:repeating-linear-gradient(45deg,#ffffff06 0 1px,transparent 1px 4px),radial-gradient(ellipse at 12% 0,#c2ccdf88,transparent 65%),linear-gradient(140deg,#929bac,#637086 55%,#525d71); border:1px solid #b4bed088; box-shadow:0 44px 90px -28px #000d,inset 0 1px 1px #eef1ff66,inset 0 -8px 18px -12px #162339cc; transform:translateY(14px) rotate(-2deg) scale(.94); transition:transform .55s var(--ease); }
+  .fic-shell{ position:relative; width:min(100%,680px); height:min(78dvh,690px); max-height:calc(100dvh - 48px); border-radius:20px; background:repeating-linear-gradient(45deg,#ffffff06 0 1px,transparent 1px 4px),radial-gradient(ellipse at 12% 0,#c2ccdf88,transparent 65%),linear-gradient(140deg,#929bac,#637086 55%,#525d71); border:1px solid #b4bed088; box-shadow:0 44px 90px -28px #000d,inset 0 1px 1px #eef1ff66,inset 0 -8px 18px -12px #162339cc; transform:translateY(14px) rotate(-2deg) scale(.94); transition:transform .55s var(--ease); perspective:2200px; }
   #fichario.focused .fic-shell{ transform:translateY(0) rotate(0) scale(1); }
   .fic-shell:before{ content:""; position:absolute; inset:8px; border:1px dashed #e0e5ee55; border-radius:12px; pointer-events:none; }
   .fic-paper{ position:absolute; inset:14px 64px 14px 10px; border-radius:5px 10px 10px 5px; padding:24px 24px 20px 58px; background:repeating-linear-gradient(0deg,#ffffff08 0 1px,transparent 1px 3px),radial-gradient(ellipse at 30% 0,#ffffff4d,transparent 65%),linear-gradient(90deg,#6540530d,transparent 24%),var(--sheet,#f1bfd4); color:#3d2b2b; border:1px solid #3927341a; box-shadow:3px 4px 0 #eee4d6,6px 7px 0 #d8caba,inset 3px 0 8px -5px #6a4a58,0 14px 30px -12px #172133b3; display:flex; flex-direction:column; transition:background .3s ease; }
@@ -325,6 +325,15 @@
   .fic-tab[aria-selected=true]{ transform:translateX(4px); opacity:1; box-shadow:0 4px 9px -3px #172133bb; }
   .fic-tab:focus-visible{ outline:2px solid #49323b; outline-offset:-4px; }
   .fic-tab:disabled{ cursor:default; opacity:.55; }
+  /* folha que vira sobre as argolas ao trocar de ficha */
+  .fic-leaf{ position:absolute; inset:14px 64px 14px 10px; z-index:5; transform-style:preserve-3d; transform-origin:left center; animation:ficLeafTurn .6s cubic-bezier(.45,.05,.35,1) forwards; pointer-events:none; }
+  .fic-leaf-face{ position:absolute; inset:0; backface-visibility:hidden; border-radius:5px 10px 10px 5px; border:1px solid #3927341a; box-shadow:3px 4px 0 #eee4d6,6px 7px 0 #d8caba,inset 3px 0 8px -5px #6a4a58; overflow:hidden; }
+  .fic-leaf-face.front{ padding:64px 20px 20px 58px; display:flex; flex-direction:column; }
+  .fic-leaf-face.back{ transform:rotateY(180deg); filter:brightness(.92); }
+  .fic-leaf-quote{ margin:auto; text-align:center; font:600 20px/1.55 "Cormorant Garamond",serif; color:#2b221a; overflow:hidden; display:-webkit-box; -webkit-line-clamp:9; -webkit-box-orient:vertical; }
+  .fic-leaf-pg{ display:block; margin-top:10px; font:800 12px "Nunito",sans-serif; color:#795861; }
+  .cform textarea.typing{ animation:typeStrike .13s ease-out; }
+  @keyframes ficLeafTurn{ 0%{ transform:rotateY(0); } 55%{ transform:rotateY(-105deg); } 100%{ transform:rotateY(-178deg); opacity:0; } }
   .cform{ height:100%; display:flex; flex-direction:column; gap:12px; }
   .cform textarea{ flex:1; min-height:34px; width:100%; resize:none; outline:none; border:none; border-radius:0; color:#3d2b2b; background:repeating-linear-gradient(180deg,transparent 0 33px,#8d5d6a2e 33px 34px); padding:6px 0 0; font:400 16px/34px "Courier New",Courier,monospace; caret-color:#754b60; }
   .cform textarea::placeholder{ color:#946c78; }
@@ -336,6 +345,8 @@
     #fichario{ padding:18px; }
     .fic-shell{ max-height:calc(100dvh - 36px); }
     .fic-paper{ inset:12px 58px 12px 8px; padding:20px 16px 16px 42px; }
+    .fic-leaf{ inset:12px 58px 12px 8px; }
+    .fic-leaf-face.front{ padding-left:42px; }
     #fichario h2{ font-size:20px; }
     .fic-rings{ width:34px; }
     .fic-rings i{ width:32px; }
@@ -354,6 +365,7 @@
   @media(prefers-reduced-motion:reduce){
     #fichario,.fic-shell,.fic-paper,.fic-tab{ transition:none; }
     .fic-body{ animation:none; }
+    .fic-leaf{ animation:none; opacity:0; }
   }
 
   /* ---- página de leitura (virar páginas) ---- */
