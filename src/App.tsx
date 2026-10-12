@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/common/Header';
 import { Tabs } from './components/common/Tabs';
 import { AuthBanner } from './components/common/AuthBanner';
+import { MagicBackdrop } from './components/common/MagicBackdrop';
 import { DashboardPage } from './pages/DashboardPage';
 import { ShelfPage } from './pages/ShelfPage';
 import { AddBookPage } from './pages/AddBookPage';
@@ -14,6 +15,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export const App: React.FC = () => {
   return (
     <div className="app-container">
+      <MagicBackdrop />
       <Header />
       <AuthBanner />
       <Tabs />

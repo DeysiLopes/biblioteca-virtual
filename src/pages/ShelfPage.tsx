@@ -3,6 +3,7 @@ import { useLibrary } from '../hooks/useLibrary';
 import { Book } from '../core/models/book';
 import { BookCard, hashHue } from '../components/book/BookCard';
 import { BookModal } from '../components/book/BookModal';
+import { ShelfCat } from '../components/common/ShelfCat';
 import { normalizeString } from '../core/business/csv-parser';
 
 // MVP 1: cada prateleira comporta os livros que cabem na largura disponível
@@ -165,7 +166,7 @@ export const ShelfPage: React.FC = () => {
             { title: 'Livros lidos', rows: readRows, count: readGroupBooks.length, read: true },
           ] as const
         ).map(
-          (group) =>
+          (group, gi) =>
             group.rows.length > 0 && (
               <section className="shelf-section" key={group.title}>
                 <h2>
@@ -178,6 +179,7 @@ export const ShelfPage: React.FC = () => {
                       <i>{row.length} livros</i>
                     </div>
                     <div className="shelf-wood">
+                      {gi === 0 && ri === 0 && <ShelfCat />}
                       <div className="books">
                         {row.map((b, mi) => (
                           <BookCard

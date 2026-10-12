@@ -163,6 +163,141 @@
   @media(max-width:900px){ .books{ min-height:138px; } .deco{ width:56px; height:106px; } }
   @media(max-width:560px){ .books{ min-height:122px; gap:3px; } .deco{ display:none; } }
 
+  /* ---- gatinho da prateleira (CSS puro) ---- */
+  .shelf-cat{
+    position:absolute; right:16px; bottom:-2px; z-index:4;
+    width:46px; height:54px; pointer-events:none;
+    filter:
+      drop-shadow(0 -1px 1px oklch(0.7 0.1 310 / .28))
+      drop-shadow(0 6px 8px oklch(0 0 0 / .45));
+  }
+  .cat-body{
+    position:absolute; left:11px; bottom:0; width:27px; height:32px;
+    background:#1b1220; border-radius:50% 52% 46% 44% / 60% 60% 30% 30%;
+    box-shadow:inset 0 2px 2px -1px oklch(0.65 0.09 300 / .35);
+  }
+  .cat-head{
+    position:absolute; left:2px; bottom:25px; width:24px; height:20px;
+    background:#1b1220; border-radius:50% 50% 48% 48%;
+    box-shadow:inset 0 2px 2px -1px oklch(0.65 0.09 300 / .35);
+    animation:catLook 7s ease-in-out infinite;
+  }
+  .cat-ear{
+    position:absolute; top:-6px; width:9px; height:10px; background:#1b1220;
+    clip-path:polygon(50% 0, 6% 100%, 94% 100%);
+  }
+  .cat-ear.e-l{ left:2px; transform:rotate(-16deg); }
+  .cat-ear.e-r{ right:2px; transform:rotate(16deg); }
+  .cat-eye{
+    position:absolute; top:9px; width:4px; height:6px; border-radius:50%;
+    background:#f0cd6e; box-shadow:0 0 5px #f0cd6e90;
+    animation:catBlink 5.2s ease-in-out infinite;
+  }
+  .cat-eye.y-l{ left:6px; } .cat-eye.y-r{ right:6px; }
+  .cat-tail{
+    position:absolute; right:0; bottom:1px; width:23px; height:9px;
+    background:#1b1220; border-radius:9px; transform-origin:right center;
+    animation:catTail 3.4s ease-in-out infinite;
+  }
+  .cat-tail::after{
+    content:""; position:absolute; left:-3px; top:-3px; width:9px; height:9px;
+    border-radius:50%; background:#1b1220;
+  }
+  .cat-paw{
+    position:absolute; left:2px; bottom:4px; width:15px; height:8px;
+    background:#1b1220; border-radius:8px; transform-origin:right center;
+    animation:catTap 4.6s ease-in-out infinite;
+  }
+  .shelf-cat.batting .cat-paw{ animation:catBat .55s cubic-bezier(.3,1.4,.5,1) 1; }
+  .shelf-cat.batting .cat-head{ animation:none; }
+  .shelf-cat.batting .cat-tail{ animation-duration:.8s; }
+  .book-card.cat-wobble .cover-wrap{ animation:catWobble .8s ease; }
+
+  @keyframes catTail{
+    0%,100%{ transform:rotate(0); } 50%{ transform:rotate(-18deg); }
+  }
+  @keyframes catBlink{
+    0%,91%,100%{ transform:scaleY(1); } 94%{ transform:scaleY(.12); }
+  }
+  @keyframes catLook{
+    0%,70%,100%{ transform:rotate(0); } 78%,90%{ transform:rotate(-8deg); }
+  }
+  @keyframes catTap{
+    0%,86%,100%{ transform:translateX(0); }
+    90%{ transform:translateX(-9px) rotate(-10deg); }
+    94%{ transform:translateX(0); }
+  }
+  @keyframes catBat{
+    0%{ transform:translateX(0) rotate(0); }
+    35%{ transform:translateX(-20px) rotate(-14deg); }
+    65%{ transform:translateX(-5px) rotate(4deg); }
+    100%{ transform:translateX(0) rotate(0); }
+  }
+  @keyframes catWobble{
+    0%{ transform:rotate(0); }
+    30%{ transform:rotate(-6deg) translateX(-3px); }
+    55%{ transform:rotate(3deg); }
+    78%{ transform:rotate(-1.5deg); }
+    100%{ transform:rotate(0); }
+  }
+
+  /* ---- fundo mágico: lua, estrelas de fada e poeira encantada ---- */
+  .magic-bg{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+
+  .moon{
+    position:absolute; top:150px; right:6%; width:58px; height:58px; border-radius:50%;
+    background:radial-gradient(circle at 34% 34%, #fff6dc, #f2d488 52%, #d9a94e 82%);
+    box-shadow:0 0 26px 6px oklch(0.82 0.12 90 / .4), 0 0 90px 34px oklch(0.72 0.1 90 / .14);
+  }
+  .moon::after{
+    content:""; position:absolute; top:-7%; right:-16%; width:76%; height:76%; border-radius:50%;
+    background:#1a1020;
+  }
+  .moon::before{
+    content:""; position:absolute; inset:-34%; border-radius:50%;
+    background:radial-gradient(circle, oklch(0.85 0.12 95 / .16), transparent 65%);
+  }
+
+  .aurora{
+    position:absolute; top:-20%; left:-15%; width:70%; height:60%; border-radius:50%;
+    background:radial-gradient(ellipse, oklch(0.6 0.14 310 / .14), transparent 65%);
+    filter:blur(30px);
+    animation:auroraDrift 26s ease-in-out infinite alternate;
+  }
+  @keyframes auroraDrift{
+    from{ transform:translate3d(0,0,0) scale(1); }
+    to{ transform:translate3d(34vw,10vh,0) scale(1.25); }
+  }
+
+  .sparkle{
+    position:absolute;
+    background:radial-gradient(circle, #fff 8%, var(--c) 42%, transparent 75%);
+    clip-path:polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+    filter:drop-shadow(0 0 6px var(--c)) drop-shadow(0 0 14px var(--c));
+    opacity:.15;
+    animation:twinkle var(--t) ease-in-out var(--d) infinite;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:.18; transform:scale(.55) rotate(0deg); }
+    50%{ opacity:1; transform:scale(1.25) rotate(20deg); }
+  }
+
+  .mote{
+    position:absolute; border-radius:50%;
+    background:radial-gradient(circle, var(--c), transparent 70%);
+    filter:blur(.4px);
+    opacity:0;
+    animation:moteFloat var(--t) linear var(--d) infinite;
+  }
+  @keyframes moteFloat{
+    0%{ transform:translate3d(0,0,0); opacity:0; }
+    15%{ opacity:.8; }
+    65%{ opacity:.5; }
+    100%{ transform:translate3d(var(--dx), -24vh, 0); opacity:0; }
+  }
+
+  main, header, nav.tabs{ position:relative; z-index:1; }
+
   #empty{padding:40px 10px; text-align:center; color:var(--ink2); font-size:14px;}
 
   /* modal (detalhe do livro) */
@@ -468,4 +603,7 @@
   @media(prefers-reduced-motion:reduce){
     #flipview.open,#caderno.open,.caderno,.cad-cover.docking,.cad-writing.typing,#leitura.open,#leitura .leaf,#leitura .pagina{ animation:none; }
     .flip-inner,.cad-cover.docked .flip-inner,.pp .bar>div{ transition:none; }
+    .cat-head,.cat-eye,.cat-tail,.cat-paw,.book-card.cat-wobble .cover-wrap{ animation:none; }
+    .sparkle,.mote,.aurora{ animation:none; }
+    .sparkle{ opacity:.3; } .mote{ opacity:.25; } .aurora{ opacity:.5; }
   }
