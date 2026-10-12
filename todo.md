@@ -12,6 +12,37 @@ devin -r excellent-racer
 
 Ao retomar, ler este `todo.md` e escolher a próxima prioridade antes de implementar.
 
+## Correções e melhorias pendentes do app
+
+### Filtro de gênero e dropdown
+
+Problema relatado: o filtro de gênero deixou de funcionar. Além da correção, a seleção de gênero deve virar um dropdown com o mesmo estilo do seletor de livros do modal unificado.
+
+- [ ] Reproduzir a falha do filtro de gênero e identificar a causa antes de corrigir.
+- [ ] Conferir os valores de gênero do catálogo, dos livros importados por CSV e dos dados sincronizados.
+- [ ] Substituir os botões de gênero por um dropdown (`select`), seguindo o visual do campo de escolha de livro no modal.
+- [ ] Incluir “Todos os gêneros” e listar os gêneros disponíveis sem duplicados, em ordem alfabética.
+- [ ] Tratar livros sem gênero e diferenças de espaços, maiúsculas/minúsculas ou representação dos valores sem alterar os dados salvos por tentativa.
+- [ ] Garantir que escolher um gênero filtre corretamente os livros e que “Todos os gêneros” remova somente esse filtro.
+- [ ] Manter a combinação com os filtros de status e a busca, sem perder a seleção ao atualizar a estante.
+- [ ] Testar seleção, troca de gênero, limpeza do filtro e ausência de resultados.
+- [ ] Validar aparência e uso por teclado no Edge, no PWA e em telas pequenas.
+- [ ] Confirmar que a mudança apenas filtra a visualização, sem alterar progresso, dashboard ou informações dos livros.
+
+### Prateleiras de livros lidos no final da página
+
+Na aba Estante, livros com status “Lido” devem ficar em uma seção de prateleiras no final da página, separados dos demais livros, mas continuar disponíveis para consultar e abrir novamente.
+
+- [ ] Criar a seção “Livros lidos” após as prateleiras dos demais livros, mantendo o visual de estante do app.
+- [ ] Distribuir os livros concluídos em uma ou mais prateleiras, conforme a quantidade e o espaço disponível.
+- [ ] Mover o livro para essa seção quando seu status passar a “Lido”, tanto por escolha no modal quanto pela conclusão da leitura.
+- [ ] Se o status deixar de ser “Lido”, devolver o livro às prateleiras principais.
+- [ ] Manter as capas clicáveis e o acesso ao mesmo modal unificado, às resenhas e às citações, sem mudar o status apenas por abrir um livro já lido.
+- [ ] Aplicar busca e filtros de gênero/status também aos livros concluídos, sem duplicá-los nas duas seções.
+- [ ] Não exibir prateleiras vazias nem reservar espaços desnecessários quando nenhum livro lido corresponder aos filtros.
+- [ ] Preservar IDs, progresso, datas, comentários, notas, resenhas, citações e registros: a mudança é de organização visual, não exclusão ou novo cadastro.
+- [ ] Testar mudança de status, consulta de livros já lidos, recarga/sincronização e layout em telas pequenas.
+
 ## Objetivo
 
 Permitir informar o ISBN de um livro, consultar uma API de metadados e revisar os dados encontrados antes de adicionar o livro ou completar seu cadastro na Minha Biblioteca.
