@@ -179,6 +179,7 @@
   }
   .panel h2{font:700 24px/1.15 "Cormorant Garamond",serif;}
   .panel .sub{font-size:13px; color:var(--ink2); margin:2px 0 4px;}
+  .panel .mini{font-size:11.5px; color:var(--ink2); line-height:1.5;}
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0;}
   .chip{ font:600 11.5px/1 "Nunito",sans-serif; padding:6px 9px; border-radius:8px; background:oklch(0.35 0.05 45 / .1); color:var(--ink2); }
   .chip b{color:var(--ink);}
@@ -199,7 +200,9 @@
   .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
   .pp{display:flex; align-items:center; gap:8px; margin-top:4px; font-size:12px; color:var(--ink2);}
   .pp .bar{flex:1; height:6px; background:oklch(0.5 0.02 40 / .22); border-radius:99px; overflow:hidden;}
-  .pp .bar>div{height:100%; background:var(--accent); border-radius:99px;}
+  .pp .bar>div{height:100%; background:var(--accent); border-radius:99px; transition:width .3s var(--ease);}
+  .reading-progress{ margin:10px 0; color:var(--ink2); font:700 12px "Nunito",sans-serif; }
+  .reading-inputs{ margin:14px 0 8px; }
   .mbtn{
     border:none; border-radius:12px; padding:11px; font:800 14px "Nunito",sans-serif; cursor:pointer; transition:.15s;
   }
@@ -246,25 +249,9 @@
   .nbook .n{ border-left:2px solid var(--line); padding-left:8px; margin-top:6px; font-size:12.5px; color:var(--ink); white-space:pre-wrap; }
   .nbook .r{ background:oklch(0.35 0.02 30 / .35); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-top:6px; font-size:13px; color:var(--ink); white-space:pre-wrap; }
   .nbook .editl{ flex:none; align-self:center; font-size:11px; color:var(--accent); white-space:nowrap; }
-  .elog{ margin-top:7px; border-top:1px dashed var(--line); padding-top:6px; }
-  .erow{ font-size:12px; color:var(--ink2); line-height:1.55; }
-  .erow b{ color:var(--accent); }
-  .erow span{ color:var(--ink); }
-  .dedit{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-top:7px; }
-  .dedit .drow{ display:flex; gap:6px; align-items:center; margin-bottom:6px; }
-  .dedit .ede{ flex:1; min-width:0; padding:6px 8px; }
-  .dedit .edp{ width:78px; flex:none; text-align:center; padding:6px 8px; }
-  .dedit .edn{ width:100%; min-height:44px; }
-  .dedit .edsave,.dedit .eddel{ padding:6px 9px; font-size:12px; white-space:nowrap; }
-  .addrow{ margin-top:8px; width:100%; background:oklch(0.35 0.02 30 / .28); border:1px dashed var(--line); color:var(--ink2); border-radius:10px; padding:9px; font:700 12.5px "Nunito",sans-serif; cursor:pointer; }
-  .addrow:hover{ color:var(--ink); border-color:var(--accent); }
   .section-label{ font:700 12.5px; color:var(--ink2); text-transform:uppercase; letter-spacing:.08em; margin:18px 0 2px; }
 
   /* form diário */
-  #dform{ position:fixed; inset:0; z-index:80; display:none; background:oklch(0.18 0.03 35 / .5); backdrop-filter:blur(5px); align-items:flex-end; }
-  #dform.open{ display:flex; }
-  #dform .sheet{ width:100%; max-width:520px; margin:0 auto; background:var(--paper); border-radius:22px 22px 0 0; padding:18px 20px calc(22px + env(safe-area-inset-bottom)); box-shadow:0 -20px 60px -20px oklch(0 0 0 / .7); }
-  #dform .sheet h2{font:700 20px "Cormorant Garamond",serif; margin-bottom:12px;}
 
   #toast{
     position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(20px);
@@ -309,26 +296,71 @@
   .cite-btn{ display:flex; align-items:center; gap:8px; width:100%; margin-top:8px; background:oklch(0.35 0.03 40 / .3); border:1px dashed var(--line); color:var(--ink2); border-radius:10px; padding:10px 12px; font:700 12.5px "Nunito",sans-serif; cursor:pointer; }
   .cite-btn:hover{ color:var(--ink); border-color:var(--accent); }
   .cite-btn b{ color:var(--accent); }
-  #fichario{ position:fixed; inset:0; z-index:85; display:none; background:oklch(0.15 0.03 35 / .64); backdrop-filter:blur(7px); }
-  #fichario.open{ display:flex; align-items:flex-end; justify-content:center; }
-  #fichario .sheet{ width:100%; max-width:560px; max-height:90dvh; overflow-y:auto; background:var(--paper); border-radius:22px 22px 0 0; padding:18px 20px calc(24px + env(safe-area-inset-bottom)); box-shadow:0 -20px 60px -20px oklch(0 0 0/.7); }
-  #fichario h2{ font:700 22px "Cormorant Garamond",serif; }
-  #fichario .sub{ font-size:12px; color:var(--ink2); margin:2px 0 4px; }
-  .fich-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
-  @media(max-width:420px){ .fich-grid{ grid-template-columns:1fr; } }
-  .ficard{ position:relative; border-radius:11px; padding:12px 12px 26px; min-height:96px; color:#3a2c1d; font:600 13px/1.45 "Nunito",sans-serif; cursor:pointer; text-align:left; box-shadow:0 10px 20px -12px oklch(0 0 0/.65); border:none; transition:transform .18s var(--ease); }
-  .ficard:hover{ transform:translateY(-3px) rotate(-.6deg); }
-  .ficard:active{ transform:translateY(0); }
-  .ficard .q{ display:block; white-space:pre-wrap; overflow:hidden; max-height:9.6em; }
-  .ficard .pg{ position:absolute; right:10px; bottom:7px; font:800 11px "Nunito",sans-serif; opacity:.6; }
-  .ficard .del{ position:absolute; right:6px; top:5px; width:22px;height:22px; border:none; background:rgba(255,255,255,.4); color:rgba(0,0,0,.45); border-radius:50%; font:800 12px "Nunito",sans-serif; cursor:pointer; line-height:1; }
-  .ficard.add{ background:oklch(0.35 0.03 40 / .28); border:1px dashed var(--line); color:var(--ink2); display:flex; align-items:center; justify-content:center; font-weight:800; box-shadow:none; }
-  .ficard.add:hover{ color:var(--ink); border-color:var(--accent); }
-  .cform{ margin-top:12px; }
-  .cform textarea{ min-height:80px; }
-  .cform .row{ display:flex; gap:8px; align-items:center; margin-top:8px; }
-  .cform .row .pgwrap{ display:flex; align-items:center; gap:6px; color:var(--ink2); font:700 12px "Nunito",sans-serif; }
-  .cform .row input[type=number]{ width:110px; }
+  #fichario{ position:fixed; inset:0; z-index:85; display:none; padding:24px; background:oklch(0.15 0.03 35 / .64); backdrop-filter:blur(7px); transition:background .45s ease,backdrop-filter .45s ease; }
+  #fichario.open{ display:flex; align-items:center; justify-content:center; }
+  #fichario.focused{ background:oklch(0.13 0.02 40 / .86); backdrop-filter:blur(11px); }
+  .fic-shell{ position:relative; width:min(100%,680px); height:min(78dvh,690px); max-height:calc(100dvh - 48px); border-radius:20px; background:repeating-linear-gradient(45deg,#ffffff06 0 1px,transparent 1px 4px),radial-gradient(ellipse at 12% 0,#c2ccdf88,transparent 65%),linear-gradient(140deg,#929bac,#637086 55%,#525d71); border:1px solid #b4bed088; box-shadow:0 44px 90px -28px #000d,inset 0 1px 1px #eef1ff66,inset 0 -8px 18px -12px #162339cc; transform:translateY(14px) rotate(-2deg) scale(.94); transition:transform .55s var(--ease); }
+  #fichario.focused .fic-shell{ transform:translateY(0) rotate(0) scale(1); }
+  .fic-shell:before{ content:""; position:absolute; inset:8px; border:1px dashed #e0e5ee55; border-radius:12px; pointer-events:none; }
+  .fic-paper{ position:absolute; inset:14px 64px 14px 10px; border-radius:5px 10px 10px 5px; padding:24px 24px 20px 58px; background:repeating-linear-gradient(0deg,#ffffff08 0 1px,transparent 1px 3px),radial-gradient(ellipse at 30% 0,#ffffff4d,transparent 65%),linear-gradient(90deg,#6540530d,transparent 24%),var(--sheet,#f1bfd4); color:#3d2b2b; border:1px solid #3927341a; box-shadow:3px 4px 0 #eee4d6,6px 7px 0 #d8caba,inset 3px 0 8px -5px #6a4a58,0 14px 30px -12px #172133b3; display:flex; flex-direction:column; transition:background .3s ease; }
+  .fic-paper:after{ content:""; position:absolute; top:0; right:0; width:24px; height:24px; border-radius:0 9px 0 5px; background:linear-gradient(225deg,#fff9 0 48%,#7850651a 49%,transparent 52%); pointer-events:none; }
+  .fic-paper:before{ content:""; position:absolute; top:0; bottom:0; left:42px; width:1px; background:#aa62684d; pointer-events:none; }
+  .fic-rings{ position:absolute; z-index:2; top:86px; bottom:46px; left:1px; width:44px; display:flex; flex-direction:column; justify-content:space-between; pointer-events:none; }
+  .fic-rings i{ position:relative; width:40px; height:12px; border:2px solid #d4d5d9; border-radius:9px; background:linear-gradient(180deg,#5f636b,#f4f4f1 42%,#969ba3 60%,#393e49); box-shadow:0 3px 3px #0005; }
+  .fic-rings i:after{ content:""; position:absolute; right:-4px; top:0; width:8px; height:8px; border-radius:50%; background:#4c3848; z-index:-1; box-shadow:0 0 0 2px #ffffff35; }
+  .fic-head{ display:flex; align-items:center; gap:8px; flex:none; }
+  #fichario h2{ font:700 23px "Cormorant Garamond",serif; flex:1; min-width:0; }
+  .fic-toolbar{ display:flex; gap:4px; }
+  #fichario .mbtn.ghost2{ color:#65434b; background:#ffffff40; }
+  #fichario .mbtn{ width:auto; font-size:12px; padding:8px 10px; }
+  #fichario .mbtn.primary{ background:#754b60; color:#fff3ec; }
+  #fichario .sub{ font:600 11px/1.45 "Nunito",sans-serif; color:#72535b; margin:5px 0 16px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; flex:none; }
+  .fic-body{ flex:1; min-height:0; animation:ficPageIn .3s var(--ease) both; }
+  .fic-view{ height:100%; display:flex; flex-direction:column; }
+  .fic-quote{ flex:1; min-height:0; overflow-y:auto; white-space:pre-wrap; font:600 24px/1.6 "Cormorant Garamond",serif; padding:12px 4px; overflow-wrap:anywhere; display:flex; flex-direction:column; align-items:center; justify-content:safe center; text-align:center; }
+  .fic-quote-text{ display:block; flex:none; max-width:100%; }
+  .fic-quote-text:before{ content:"\201C"; }
+  .fic-quote-text:after{ content:"\201D"; }
+  .fic-page-number{ text-align:right; font:800 12px "Nunito",sans-serif; color:#795861; margin:10px 0 16px; }
+  .fic-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .fic-empty{ height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:18px; text-align:center; font:600 21px/1.5 "Cormorant Garamond",serif; }
+  .fic-tabs{ position:absolute; right:5px; top:94px; bottom:24px; width:62px; padding:2px 5px 6px 0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#e4e7ec80 transparent; display:flex; flex-direction:column; gap:5px; }
+  .fic-tab{ flex:none; width:100%; min-height:56px; border:none; border-radius:0 12px 12px 0; background:var(--tab); color:#49323b; box-shadow:0 3px 6px -3px #17213399; font:800 13px "Nunito",sans-serif; padding:8px 4px; cursor:pointer; transition:transform .2s var(--ease),opacity .2s; opacity:.8; }
+  .fic-tab span{ display:block; }
+  .fic-tab .tab-page{ font-size:10px; font-weight:700; margin-top:3px; }
+  .fic-tab[aria-selected=true]{ transform:translateX(4px); opacity:1; box-shadow:0 4px 9px -3px #172133bb; }
+  .fic-tab:focus-visible{ outline:2px solid #49323b; outline-offset:-4px; }
+  .fic-tab:disabled{ cursor:default; opacity:.55; }
+  .cform{ height:100%; display:flex; flex-direction:column; gap:12px; }
+  .cform textarea{ flex:1; min-height:34px; width:100%; resize:none; outline:none; border:none; border-radius:0; color:#3d2b2b; background:repeating-linear-gradient(180deg,transparent 0 33px,#8d5d6a2e 33px 34px); padding:6px 0 0; font:400 16px/34px "Courier New",Courier,monospace; caret-color:#754b60; }
+  .cform textarea::placeholder{ color:#946c78; }
+  .cform .row{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:end; gap:8px; flex:none; }
+  .cform .pgwrap{ display:flex; flex-direction:column; gap:4px; max-width:120px; color:#65434b; font:800 10px "Nunito",sans-serif; }
+  .cform input[type=number]{ width:100%; min-width:0; background:#ffffff40; border-color:#946c7870; color:#3d2b2b; padding:7px; }
+  @keyframes ficPageIn{ from{ opacity:0; transform:translateX(10px); } to{ opacity:1; transform:translateX(0); } }
+  @media(max-width:480px){
+    #fichario{ padding:18px; }
+    .fic-shell{ max-height:calc(100dvh - 36px); }
+    .fic-paper{ inset:12px 58px 12px 8px; padding:20px 16px 16px 42px; }
+    #fichario h2{ font-size:20px; }
+    .fic-rings{ width:34px; }
+    .fic-rings i{ width:32px; }
+    .fic-paper:before{ left:32px; }
+    .fic-tabs{ width:56px; right:4px; }
+    .fic-quote{ font-size:21px; }
+  }
+  @media(max-height:560px){
+    .fic-paper{ padding-top:14px; padding-bottom:12px; }
+    #fichario .sub{ margin-bottom:8px; -webkit-line-clamp:1; }
+    .fic-tabs{ top:66px; bottom:18px; }
+    .fic-rings{ top:68px; bottom:32px; }
+    .fic-page-number{ margin:6px 0; }
+    .cform{ gap:6px; }
+  }
+  @media(prefers-reduced-motion:reduce){
+    #fichario,.fic-shell,.fic-paper,.fic-tab{ transition:none; }
+    .fic-body{ animation:none; }
+  }
 
   /* ---- página de leitura (virar páginas) ---- */
   #leitura{ position:fixed; inset:0; z-index:95; display:none; background:oklch(0.13 0.02 40 / .8); backdrop-filter:blur(10px); align-items:center; justify-content:center; }
@@ -340,10 +372,12 @@
   #leitura .pagina{ position:absolute; inset:0; border-radius:7px; background:linear-gradient(160deg,#f7f0dd,#ecdfc4); box-shadow:0 40px 90px -30px #000, inset 0 0 0 1px rgba(120,100,70,.22); padding:40px 34px 30px; display:flex; flex-direction:column; animation:focusIn .7s .5s var(--ease) both; }
   @keyframes focusIn{ from{opacity:0; transform:scale(.9);} to{opacity:1; transform:scale(1);} }
   #leitura .page-mark{ font:700 11px "Nunito",sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#a08e6d; margin-bottom:16px; }
-  #leitura .quote{ flex:1; overflow-y:auto; font:500 21px/1.62 "Cormorant Garamond",serif; color:#33271a; white-space:pre-wrap; }
-  #leitura .quote:before{ content:"\201C"; }
-  #leitura .quote:after{ content:"\201D"; }
-  #leitura .pnum{ text-align:right; font:800 15px "Nunito",sans-serif; color:#6d5c42; margin-top:14px; }
+  #leitura .quote{ flex:1; min-height:0; overflow-y:auto; font:500 clamp(21px,3vw,28px)/1.65 "Cormorant Garamond",serif; color:#33271a; white-space:pre-wrap; display:flex; flex-direction:column; align-items:center; justify-content:safe center; text-align:center; padding:12px 0; }
+  #leitura .quote-text{ flex:none; max-width:100%; width:34ch; overflow-wrap:anywhere; }
+  #leitura .quote-text:before{ content:"\201C"; }
+  #leitura .quote-text:after{ content:"\201D"; }
+  #leitura .page-mark{ text-align:center; }
+  #leitura .pnum{ text-align:center; font:800 13px "Nunito",sans-serif; color:#8c7450; margin-top:16px; letter-spacing:.08em; }
   #leitura .xclose{ position:absolute; top:calc(14px + env(safe-area-inset-top)); right:16px; z-index:3; }
 
   /* ---- virar a capa (contracapa / resenha) ---- */
@@ -406,8 +440,8 @@
     .cad-cover{ top:-28px; left:calc(50% - 20px); width:40px; height:60px; }
   }
   @media(prefers-reduced-motion:reduce){
-    #flipview.open,#caderno.open,.caderno,.cad-cover.docking,.cad-writing.typing{ animation:none; }
-    .flip-inner,.cad-cover.docked .flip-inner{ transition:none; }
+    #flipview.open,#caderno.open,.caderno,.cad-cover.docking,.cad-writing.typing,#leitura.open,#leitura .leaf,#leitura .pagina{ animation:none; }
+    .flip-inner,.cad-cover.docked .flip-inner,.pp .bar>div{ transition:none; }
   }
 </style>
 </head>
@@ -473,22 +507,6 @@
   </div>
 </div>
 
-<div id="dform">
-  <div class="sheet">
-    <h2>📖 Registrar leitura</h2>
-    <div class="field"><label>Livro</label><select id="fbook"></select></div>
-    <div class="row2">
-      <div class="field"><label>Data</label><input type="date" id="fdate"></div>
-      <div class="field"><label>Páginas lidas</label><input type="number" id="fpages" min="1" value="10"></div>
-    </div>
-    <div class="field"><label>Anotação (opcional)</label><textarea id="fnote" placeholder="O que rolou hoje no livro?"></textarea></div>
-    <div class="mfoot">
-      <button class="mbtn ghost2" id="fCancel">Cancelar</button>
-      <button class="mbtn primary" id="fSave" style="flex:1">Salvar</button>
-    </div>
-  </div>
-</div>
-
 <div id="fichario"></div>
 <div id="flipview"></div>
 <div id="caderno"></div>
@@ -501,7 +519,7 @@
 const $ = (s,r=document)=>r.querySelector(s);
 const STATUS = ["Quero ler","Lendo","Lido","Abandonado"];
 const STATUS_COLOR = {"Quero ler":"#caa370","Lendo":"#6fbf8f","Lido":"#e09a5b","Abandonado":"#b3a28c"};
-const OVERRIDE = ["nota","comentarios","resenha","citacoes","status","tipo","paginasLidas","inicio","fim","updatedAt"];
+const OVERRIDE = ["nota","comentarios","resenha","citacoes","status","tipo","paginas","paginasLidas","readingEpoch","inicio","fim","updatedAt"];
 const GIT = { owner:"DeysiLopes", repo:"biblioteca-virtual", path:"data/sync.json", branch:"main" };
 function uid(){ try{ return crypto.randomUUID(); }catch(e){ return "id-"+Date.now()+"-"+Math.random().toString(36).slice(2,10); } }
 
@@ -524,13 +542,44 @@ async function delOf(name,k){ await reqi((await store("readwrite",name)).delete(
 
 /* ---------- estado ---------- */
 let BOOKS=[], DIARY=[], META={}, CATALOG=[];
-let fdStatus="todos", fdGenre="todos", lastTab="shelf", openRect=null, openTarget=null, panelBookId=null, diaryEdit=null;
+let fdStatus="todos", fdGenre="todos", lastTab="shelf", openRect=null, openTarget=null, panelBookId=null;
 let deferredInstall=null;
 let syncTimer=null, syncState={ busy:false, last:false, error:null };
 
 function norm(s){ return (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w\s]/g," ").replace(/\s+/g," ").trim(); }
 const slug = t => norm(t).replace(/\s+/g,"-");
-function pct(b){ return b.paginas>0 ? Math.min(100, Math.round(((b.paginasLidas||0)/b.paginas)*100)) : 0; }
+const pagesRead=b=>Math.max(0,Number(b.paginasLidas)||0);
+function pct(b){ return b.paginas>0 ? Math.min(100, Math.round(pagesRead(b)/b.paginas*100)) : 0; }
+function progressHTML(b,percentId=""){
+  const pc=pct(b), count=b.paginas>0?`${pagesRead(b)} / ${b.paginas} pág`:`${pagesRead(b)} pág · total não informado`;
+  return `<div class="reading-progress"><span>${count}</span><div class="pp"><div class="bar" role="progressbar" aria-label="Progresso de leitura" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}" aria-valuetext="${count}"><div style="width:${pc}%"></div></div><span ${percentId?`id="${percentId}"`:""}>${pc}%</span></div></div>`;
+}
+function withReadingProgress(b,pages,date){
+  const delta=pages-pagesRead(b);
+  const next=Object.assign({},b,{paginasLidas:Math.max(0,pages),updatedAt:Date.now()});
+  if(delta>0){
+    if(next.paginas>0&&next.paginasLidas>=next.paginas) next.status="Lido";
+    else if(next.status==="Quero ler") next.status="Lendo";
+    if(["Lendo","Lido"].includes(next.status)&&!next.inicio) next.inicio=date;
+    if(next.status==="Lido"&&!next.fim) next.fim=date;
+  }else if(delta<0&&next.status==="Lido"&&next.paginas>0&&next.paginasLidas<next.paginas){
+    next.status="Lendo"; next.fim="";
+  }
+  return next;
+}
+async function persistReading(books,entry){
+  const db=await idb();
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(entry?["books","diary"]:["books"],"readwrite");
+      tx.oncomplete=resolve; tx.onabort=()=>reject(tx.error||new Error("Falha ao salvar leitura"));
+      try{
+        for(const b of books) tx.objectStore("books").put(b);
+        if(entry) tx.objectStore("diary").put(entry);
+      }catch(e){ tx.abort(); reject(e); }
+    });
+  }finally{ db.close(); }
+}
 function hashHue(s){ let h=0; for(const c of String(s)) h=(h*31 + c.charCodeAt(0))%360; return h; }
 function fallback(title){ const h=hashHue(title); return {g1:`oklch(${0.72+((h%40)/100)} ${0.09} ${h})`, g2:`oklch(${0.5+((h%25)/100)} ${0.12} ${(h+45)%360})`, initials: norm(title).split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase() || (title&&title[0]||"?").toUpperCase() }; }
 function statusDot(b){ return `<i style="background:${STATUS_COLOR[b.status]||"#bdb3a4"}"></i>`+ (b.status||"sem status"); }
@@ -644,7 +693,7 @@ function buildSyncPayload(){
     if(String(b.id).startsWith("imp:")) Object.assign(rec,{ title:b.title||"Sem título", author:b.author||"", paginas:b.paginas||0, genero:b.genero||"", formato:b.formato||"", idioma:b.idioma||"" });
     books[b.id]=rec;
   }
-  return { v:1, books, diary: DIARY.map(d=>({ id:String(d.id), bookId:d.bookId, date:d.date, pages:d.pages, note:d.note||"", ts:d.ts||Date.now() })) };
+  return { v:1, books, diary: DIARY.map(d=>({ id:String(d.id), bookId:d.bookId, date:d.date, pages:d.pages, note:d.note||"", ts:d.ts||Date.now(), readingEpoch:d.readingEpoch||0 })) };
 }
 function mergePayload(a, b){
   const books={}; Object.assign(books, a.books||{});
@@ -789,6 +838,7 @@ function renderShelves(){
   const wrap=$("#shelves");
   wrap.innerHTML="";
   $("#empty").hidden = list.length>0;
+  renderStats();
   if(!list.length) return;
   const avail=Math.max(180, wrap.clientWidth-28);
   const rows=[]; let row=[], wsum=0;
@@ -813,16 +863,16 @@ function renderShelves(){
     const rect=c.querySelector(".cover-wrap").getBoundingClientRect();
     openBook(c.dataset.id, rect);
   }));
-  renderStats();
 }
 function renderStats(){
   const total=BOOKS.length, lendo=BOOKS.filter(b=>b.status==="Lendo").length,
         lidos=BOOKS.filter(b=>b.status==="Lido").length;
-  const hoje=DIARY.filter(d=>d.date===today()).reduce((s,d)=>s+(+d.pages||0),0);
+  const hoje=dashboardEntries().filter(d=>d.date===today()).reduce((s,d)=>s+(+d.pages||0),0);
   $("#statsShelf").innerHTML=`<span><b>${total}</b> na biblioteca</span> · <span><b>${lendo}</b> lendo</span> · <span><b>${lidos}</b> lidos</span> · <span>Hoje <b>${hoje}</b> págs</span>`;
 }
 
 /* ---------- modal / animação ---------- */
+let bookCloseTimer;
 function modalShell(){
   const m=$("#modal");
   m.innerHTML=`<div class="fly-cover" id="fly"></div>
@@ -831,6 +881,12 @@ function modalShell(){
 }
 function openBook(id, rect){
   const b=BOOKS.find(x=>x.id===id); if(!b) return;
+  clearTimeout(bookCloseTimer);
+  if(!rect){
+    const cover=$(`[data-id="${CSS.escape(String(id))}"] .cover-wrap, [data-id="${CSS.escape(String(id))}"] .cwrap`);
+    const bounds=cover?.getBoundingClientRect();
+    rect=bounds?.width>0?bounds:{left:innerWidth/2-20,top:innerHeight/2-29,width:40,height:58};
+  }
   openRect=rect;
   const m=modalShell();
   const fly=$("#fly",m);
@@ -885,131 +941,43 @@ function closeBook(){
   fly.style.transition="";
   fly.style.left=openRect.left+"px"; fly.style.top=openRect.top+"px";
   fly.style.width=openRect.width+"px"; fly.style.height=openRect.height+"px";
-  setTimeout(()=>{ m.classList.remove("open"); document.body.style.overflow=""; m.innerHTML=""; }, 540);
-}
-function starRow(cur){
-  let s=""; for(let i=1;i<=5;i++) s+=`<span data-v="${i}" class="${i<=cur?"on":""}">★</span>`;
-  return `<div class="stars">${s}</div>`;
+  clearTimeout(bookCloseTimer);
+  bookCloseTimer=setTimeout(()=>{ m.classList.remove("open"); document.body.style.overflow=""; m.innerHTML=""; }, 540);
 }
 function renderPanel(b, id, m){
   const p=$("#panel",m);
-  p.innerHTML="";
   panelBookId=id;
-  const fb=fallback(b.title);
-  const pc=pct(b);
-  const entries=DIARY.filter(d=>d.bookId===id).sort((a,b)=>(b.ts||0)-(a.ts||0));
   p.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:8px"><h2>${b.title||"Sem título"}</h2><button class="mbtn ghost2" data-act="close">✕</button></div>
-    <div class="sub">${b.author||""} · <span id="pMeta"></span></div>
-    <input type="hidden" id="bId" value="${b.id}">
-    <div class="chips">
-      <span class="chip">Status <select id="bStatus" style="border:none;background:none;padding:0;font:600 11.5px 'Nunito',sans-serif;color:var(--ink);width:auto">
-        ${STATUS.map(s=>`<option ${(b.status||"Quero ler")===s?"selected":""}>${s}</option>`).join("")}
-      </select></span>
-      <span class="chip">Tipo <select id="bTipo" style="border:none;background:none;padding:0;font:600 11.5px 'Nunito',sans-serif;color:var(--ink);width:auto">
-        ${["","Estudo","Lazer"].map(x=>`<option ${(b.tipo||"")===x?"selected":""}>${x}</option>`).join("")}
-      </select></span>
+    <div style="display:flex;justify-content:space-between;gap:8px"><h2>${reviewText(b.title||"Sem título")}</h2><button class="mbtn ghost2" data-act="close">✕</button></div>
+    <div class="sub">${reviewText(b.author)}</div>
+    <div class="field"><label for="bId">Livro</label><select id="bId">${BOOKS.map(book=>`<option value="${reviewText(book.id)}" ${book.id===id?"selected":""}>${reviewText(book.title||"Sem título")}</option>`).join("")}</select></div>
+    <div class="row2">
+      <div class="field"><label for="bStatus">Status</label><select id="bStatus">${STATUS.map(s=>`<option ${(b.status||"Quero ler")===s?"selected":""}>${s}</option>`).join("")}</select></div>
+      <div class="field"><label for="bTipo">Tipo</label><select id="bTipo">${["","Estudo","Lazer"].map(x=>`<option value="${x}" ${(b.tipo||"")===x?"selected":""}>${x||"Não definido"}</option>`).join("")}</select></div>
     </div>
-    <div class="field"><label>Sua nota</label><span id="pStars">${starRow(b.nota||0)}</span></div>
-    <div class="field"><label>Progresso</label>
-      <div class="row3">
-        <div><input type="number" id="bPagesLidas" min="0" value="${b.paginasLidas||0}" placeholder="lidas"></div>
-        <div><input type="number" id="bTotal" min="0" value="${b.paginas||""}" placeholder="total"></div>
-        <div style="display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink2)">${pc}%</div>
+    <div class="field"><label>Progresso da leitura</label>
+      <div id="pProgress">${progressHTML(b,"pPerc")}</div>
+      <div class="row2 reading-inputs">
+        <div><label for="bPagesLidas">Páginas lidas</label><input type="number" id="bPagesLidas" min="0" step="1" required value="${pagesRead(b)}" placeholder="Total já lido"></div>
+        <div><label for="bTotal">Total do livro</label><input type="number" id="bTotal" min="0" step="1" value="${b.paginas||""}" placeholder="Total de páginas"></div>
       </div>
-      <div class="pp"><div class="bar"><div style="width:${pc}%"></div></div><span id="pPerc">${pc}%</span></div>
+      <p class="mini">Informe o total já lido. Esse valor é compartilhado entre estante e diário, sem somar registros antigos.</p>
     </div>
     <div class="row2">
-      <div class="field"><label>Comecei em</label><input type="date" id="bInicio" value="${b.inicio||""}"></div>
-      <div class="field"><label>Terminei em</label><input type="date" id="bFim" value="${b.fim||""}"></div>
+      <div class="field"><label for="bInicio">Comecei em</label><input type="date" id="bInicio" value="${b.inicio||""}"></div>
+      <div class="field"><label for="bFim">Terminei em</label><input type="date" id="bFim" value="${b.fim||""}"></div>
     </div>
-    <div class="field"><label>Comentários</label><textarea id="bComent" placeholder="O que achou?">${(b.comentarios||"").replace(/</g,"&lt;")}</textarea></div>
-    <div class="field"><label>Resenha</label><textarea id="bResenha" placeholder="Escreva sua resenha..." style="min-height:76px">${(b.resenha||"").replace(/</g,"&lt;")}</textarea>
-      <button class="cite-btn" data-act="fichario">🗂️ Fichário de citações <b>(${(b.citacoes||[]).length})</b></button>
-    </div>
-    <div class="field"><label>Diário deste livro (${entries.length})</label>
-      <div id="bEntries">${entries.map(en=>entryRowHTML(en)).join("")}</div>
-      <button class="addrow" data-act="addEntry">＋ Adicionar registro</button>
-    </div>
+    <div class="field"><label for="bComent">Comentários gerais</label><textarea id="bComent" placeholder="Suas observações sobre a leitura">${reviewText(b.comentarios)}</textarea></div>
     <div class="mfoot">
       <button class="mbtn ghost2" data-act="close">Fechar</button>
       <button class="mbtn primary" data-act="save" style="flex:1">Salvar</button>
     </div>`;
-  $("#bTotal",p).addEventListener("change",()=>updatePerc(p));
-  $("#bPagesLidas",p).addEventListener("input",()=>updatePerc(p));
-  $(".stars",p)?.querySelectorAll("span").forEach(s=>s.addEventListener("click",()=>{
-    const v=+s.dataset.v; $(`#pStars`,p).innerHTML=starRow(v); $("#pStars",p).dataset.nota=v;
-  }));
+  $("#bId",p).addEventListener("change",()=>openBook($("#bId",p).value));
+  for(const field of ["#bTotal","#bPagesLidas"]) $(field,p).addEventListener("input",()=>updatePerc(p));
   p.querySelectorAll("[data-act]").forEach(btn=>btn.addEventListener("click",()=>{
-    const act=btn.dataset.act;
-    if(act==="close") closeBook();
-    else if(act==="save") saveBook(p,id);
-    else if(act==="addEntry"){ addEntryRow(id); }
-    else if(act==="fichario"){ closeBook(); setTimeout(()=>openFichario(id),560); }
+    if(btn.dataset.act==="close") closeBook();
+    else if(btn.dataset.act==="save") saveBook(p,id);
   }));
-  p.querySelectorAll(".dedit").forEach(row=>bindEntryRow(row,id));
-}
-function entryRowHTML(en){
-  return `<div class="dedit" data-eid="${en.id}">
-    <div class="drow">
-      <input type="date" class="ede" value="${en.date||today()}">
-      <input type="number" class="edp" min="0" value="${en.pages||0}" placeholder="pág">
-      <button class="mbtn primary edsave">Salvar</button>
-      <button class="mbtn ghost2 eddel" data-del="${en.id}" title="Apagar">✕</button>
-    </div>
-    <textarea class="edn" placeholder="Anotações, citações, o que rolou...">${en.note?en.note.replace(/</g,"&lt;"):""}</textarea>
-  </div>`;
-}
-function bindEntryRow(row, bookId){
-  row.querySelector(".edsave").addEventListener("click",()=>saveEntryRow(row,bookId));
-  row.querySelector(".eddel").addEventListener("click",async()=>{
-    const did=String(row.dataset.eid||"");
-    if(did){ await delOf("diary",did); await loadData(); renderDiary(); markDirty(); refreshPanel(); }
-    else row.remove();
-  });
-}
-function addEntryRow(bookId){
-  const box=$("#bEntries"); if(!box) return;
-  const div=document.createElement("div");
-  div.className="dedit"; div.dataset.eid="";
-  div.innerHTML=`<div class="drow">
-    <input type="date" class="ede" value="${today()}">
-    <input type="number" class="edp" min="0" value="" placeholder="pág">
-    <button class="mbtn primary edsave">Salvar</button>
-    <button class="mbtn ghost2 eddel" title="Cancelar">✕</button>
-  </div>
-  <textarea class="edn" placeholder="Anotações, citações, o que rolou..."></textarea>`;
-  box.appendChild(div);
-  bindEntryRow(div,bookId);
-  div.querySelector(".edp").focus();
-}
-async function saveEntryRow(row, bookId){
-  const date=row.querySelector(".ede").value||today();
-  const pages=Math.max(0,+row.querySelector(".edp").value||0);
-  const note=row.querySelector(".edn").value.trim();
-  const eid=row.dataset.eid||"";
-  const old=eid?DIARY.find(d=>String(d.id)===eid):null;
-  if(!eid && !pages && !note){ row.remove(); return; }
-  const entry={ id:eid||uid(), bookId, date, pages, note, ts:Date.now() };
-  await putOf("diary", entry);
-  const b=BOOKS.find(x=>x.id===bookId);
-  if(b){
-    const delta=pages-(old?(+old.pages||0):0);
-    if(delta!==0){
-      const next=Object.assign({},b);
-      next.updatedAt=Date.now();
-      next.paginasLidas=Math.max(0,(b.paginasLidas||0)+delta);
-      if(next.paginas>0 && next.paginasLidas>=next.paginas) next.status="Lido";
-      else if(next.status==="Quero ler"&&pages>0) next.status="Lendo";
-      if(next.status==="Lendo"&&!next.inicio) next.inicio=today();
-      if(next.status==="Lido"&&!next.fim) next.fim=today();
-      await putOf("books", next);
-      const i=BOOKS.findIndex(x=>x.id===bookId); if(i>=0) BOOKS[i]=next;
-    }
-  }
-  await loadData(); renderDiary(); renderShelves(); refreshPanel();
-  toast(META.githubToken?"Registrado ✓":"Salvo só neste aparelho — configure 🔄");
-  markDirty();
 }
 function refreshPanel(){
   const m=$("#modal");
@@ -1019,117 +987,170 @@ function refreshPanel(){
   }
 }
 function updatePerc(p){
-  const l=+($("#bPagesLidas",p)?.value||0), t=+($("#bTotal",p)?.value||0);
-  const pc=t>0?Math.min(100,Math.round(l/t*100)):0;
-  const bar=$(".pp .bar > div",p), lab=$("#pPerc",p);
-  if(bar) bar.style.width=pc+"%"; if(lab) lab.textContent=pc+"%";
+  const b=BOOKS.find(x=>x.id===$("#bId",p)?.value); if(!b) return;
+  const preview=Object.assign({},b,{paginas:+$("#bTotal",p).value||0,paginasLidas:Math.max(0,+$("#bPagesLidas",p).value||0)});
+  $("#pProgress",p).innerHTML=progressHTML(preview,"pPerc");
 }
 async function saveBook(p,id){
   const b=BOOKS.find(x=>x.id===id); if(!b) return;
-  const notaEl=$("#pStars",p);
-  const next=Object.assign({},b);
-  next.updatedAt=Date.now();
-  next.nota = notaEl?.dataset&&notaEl.dataset.nota ? +notaEl.dataset.nota : (b.nota||0);
-  next.comentarios = $("#bComent",p)?.value||"";
-  next.resenha = $("#bResenha",p)?.value||"";
-  next.status = $("#bStatus",p)?.value || b.status;
-  next.tipo = $("#bTipo",p)?.value || "";
-  next.paginasLidas = +($("#bPagesLidas",p)?.value||0);
-  next.paginas = +($("#bTotal",p)?.value||b.paginas||0) || next.paginas;
-  next.inicio = $("#bInicio",p)?.value || b.inicio || "";
-  next.fim = $("#bFim",p)?.value || b.fim || "";
-  if(next.status==="Lendo" && !next.inicio) next.inicio = today();
-  if(next.status==="Lido" && !next.fim) next.fim = today();
-  if(next.paginas>0 && next.paginasLidas>=next.paginas) next.status="Lido";
-  const delta = next.paginasLidas - (b.paginasLidas||0);
-  if(delta>0){
-    const en={ id:uid(), bookId:next.id, date:today(), pages:delta, note:"Atualizado na estante 📚", ts:Date.now() };
-    await putOf("diary", en); DIARY.push(en);
-  }
-  await putOf("books", next);
+  const save=p.querySelector('[data-act="save"]'); if(save.disabled) return;
+  for(const input of p.querySelectorAll("input")){ if(!input.reportValidity()) return; }
+  const pages=+$("#bPagesLidas",p).value||0;
+  const delta=pages-pagesRead(b);
+  const next=withReadingProgress(Object.assign({},b,{
+    comentarios:$("#bComent",p).value,status:$("#bStatus",p).value,tipo:$("#bTipo",p).value,
+    paginas:+$("#bTotal",p).value||0,inicio:$("#bInicio",p).value,fim:$("#bFim",p).value
+  }),pages,today());
+  if(next.status==="Lendo"&&!next.inicio) next.inicio=today();
+  if(next.status==="Lido"&&!next.fim) next.fim=today();
+  if((pages===0&&pagesRead(b)>0)||(pagesRead(b)===0&&pages>0)) next.readingEpoch=Math.max(Date.now(),(+b.readingEpoch||0)+1);
+  const entry=delta>0?{id:uid(),bookId:id,date:today(),pages:delta,note:"",ts:Date.now(),readingEpoch:next.readingEpoch||0}:null;
+  save.disabled=true;
+  try{ await persistReading([next],entry); }
+  catch(e){ save.disabled=false; toast("Não foi possível salvar. Tente novamente."); return; }
   const i=BOOKS.findIndex(x=>x.id===id); if(i>=0) BOOKS[i]=next;
+  if(entry) DIARY.push(entry);
   renderFilters(); renderShelves(); renderDiary();
-  closeBook();
-  toast(META.githubToken ? (delta>0?"Salvo! Registrado no diário ✓":"Salvo ✓") : "Salvo só neste aparelho — configure 🔄 para sincronizar");
+  if(p.isConnected) closeBook();
+  toast(META.githubToken ? "Salvo ✓" : "Salvo só neste aparelho — configure 🔄 para sincronizar");
   markDirty();
 }
 
 /* ---------- fichário de citações ---------- */
-const CIT_PASTEL = ["#e8c9a0","#cbd8b4","#e6c3bf","#bccbdd","#dcc6e0","#e6dcae"];
+const CIT_PASTEL = ["#f1bfd4","#eee3ad","#dfa887","#becde5","#cbd9b8","#d9c5e6"];
+const sortedCitacoes=b=>(b.citacoes||[]).slice().sort((a,c)=>(a.ts||0)-(c.ts||0));
+let ficharioState=null, ficharioReturnFocus=null, leituraReturnFocus=null;
 function openFichario(bookId){
   const b=BOOKS.find(x=>x.id===bookId); if(!b) return;
   const el=$("#fichario");
+  ficharioReturnFocus=document.activeElement;
+  ficharioState={bookId,cid:sortedCitacoes(b)[0]?.id||null,writing:false};
+  el.innerHTML=`<div class="fic-shell" role="dialog" aria-modal="true" aria-labelledby="ficTitle">
+    <div class="fic-paper"></div>
+    <div class="fic-rings" aria-hidden="true">${"<i></i>".repeat(6)}</div>
+    <div class="fic-tabs" role="tablist" aria-label="Citações do livro" aria-orientation="vertical"></div>
+  </div>`;
   el.classList.add("open");
   document.body.style.overflow="hidden";
+  el.onclick=e=>{ if(e.target===el) closeFichario(); };
+  el.onkeydown=e=>{
+    if(e.key!=="Tab") return;
+    const fields=[...el.querySelectorAll('button:not([disabled]),textarea,input,[tabindex="0"]')].filter(field=>field.tabIndex>=0&&field.getClientRects().length);
+    const first=fields[0],last=fields[fields.length-1];
+    if(e.shiftKey&&document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey&&document.activeElement===last){ e.preventDefault(); first.focus(); }
+  };
   renderFichario(bookId);
 }
 function closeFichario(){
-  const el=$("#fichario");
-  el.classList.remove("open"); el.innerHTML="";
-  document.body.style.overflow="";
+  const el=$("#fichario"),bookId=ficharioState?.bookId;
+  el.classList.remove("open","focused"); el.innerHTML=""; el.onclick=null; el.onkeydown=null;
+  ficharioState=null;
+  document.body.style.overflow=$("#leitura").classList.contains("open")?"hidden":"";
+  const origin=ficharioReturnFocus?.isConnected?ficharioReturnFocus:bookId?$(`[data-cites="${CSS.escape(String(bookId))}"]`):null;
+  origin?.focus({preventScroll:true}); ficharioReturnFocus=null;
+}
+function editCitacao(bookId,cid=null){
+  if(ficharioState?.bookId!==bookId) return;
+  ficharioState={bookId,cid,returnCid:ficharioState.cid,writing:true};
+  renderFichario(bookId);
 }
 function renderFichario(bookId){
-  const b=BOOKS.find(x=>x.id===bookId); if(!b) return;
+  const b=BOOKS.find(x=>x.id===bookId),state=ficharioState;
   const el=$("#fichario");
-  const list=(b.citacoes||[]).slice().sort((a,c)=>(a.ts||0)-(c.ts||0));
-  el.innerHTML=`<div class="sheet">
-    <div style="display:flex;justify-content:space-between;gap:8px"><h2>🗂️ Fichário</h2><button class="mbtn ghost2" id="ficClose">✕</button></div>
-    <div class="sub">${(b.title||"").replace(/</g,"&lt;")} · ${list.length} citaç${list.length===1?"ão":"ões"}</div>
-    <div class="fich-grid">
-      ${list.map((c,i)=>`<div class="ficard" data-cid="${c.id}" style="background:${CIT_PASTEL[i%CIT_PASTEL.length]}">
-        <span class="q">${(c.text||"").replace(/</g,"&lt;")}</span>
-        <span class="pg">pág. ${c.page||"?"}</span>
-        <button class="del" data-del="${c.id}" title="Apagar">✕</button>
-      </div>`).join("")}
-      <div class="ficard add" id="ficAdd">＋ Nova citação</div>
-    </div>
-    <div class="cform" id="cform" hidden>
-      <div class="field"><textarea id="cText" placeholder="Escreva a citação..."></textarea></div>
-      <div class="row">
-        <span class="pgwrap">Página <input type="number" id="cPage" min="1" placeholder="0"></span>
-        <button class="mbtn ghost2" id="cCancel">Cancelar</button>
-        <button class="mbtn primary" id="cSave">Adicionar</button>
-      </div>
-    </div>
-  </div>`;
+  if(!b||state?.bookId!==bookId||!el.classList.contains("open")) return;
+  const list=sortedCitacoes(b);
+  const c=state.writing&&!state.cid?null:list.find(c=>String(c.id)===String(state.cid))||list[0]||null;
+  if(!state.writing) state.cid=c?.id||null;
+  const index=c?list.indexOf(c):list.length;
+  const paper=el.querySelector(".fic-paper"),tabs=el.querySelector(".fic-tabs");
+  paper.style.setProperty("--sheet",CIT_PASTEL[index%CIT_PASTEL.length]);
+  el.classList.toggle("focused",state.writing);
+  paper.innerHTML=`<div class="fic-head"><h2 id="ficTitle">${state.writing?(c?"Editar citação":"Nova citação"):"Fichário"}</h2>
+      <div class="fic-toolbar"><button class="mbtn ghost2" id="ficAdd" type="button" title="Nova citação" ${state.writing?"disabled":""}>＋ Nova</button><button class="mbtn ghost2" id="ficClose" type="button" aria-label="Fechar fichário">✕</button></div></div>
+    <div class="sub">${reviewText(b.title)} · ${list.length} citaç${list.length===1?"ão":"ões"}</div>
+    <div class="fic-body" id="ficPage" role="tabpanel" aria-labelledby="${c?`ficTab${index}`:"ficTitle"}">
+      ${state.writing?`<form class="cform" id="cform">
+        <textarea id="cText" aria-label="Texto da citação" placeholder="Escreva a citação..." required>${reviewText(c?.text)}</textarea>
+        <div class="row"><label class="pgwrap" for="cPage">Página<input type="number" id="cPage" min="1" step="1" required value="${reviewText(c?.page)}" placeholder="pág."></label>
+          <button class="mbtn ghost2" id="cCancel" type="button">Cancelar</button><button class="mbtn primary" id="cSave" type="submit">Salvar</button></div>
+      </form>`:c?`<div class="fic-view"><div class="fic-quote"><span class="fic-quote-text">${reviewText(c.text)}</span></div><div class="fic-page-number">pág. ${reviewText(c.page)}</div>
+        <div class="fic-actions"><button class="mbtn primary" id="ficEdit" type="button">Editar</button><button class="mbtn ghost2" id="ficRead" type="button">Ler página</button><button class="mbtn ghost2" id="ficDelete" type="button">Excluir</button></div></div>`:
+        `<div class="fic-empty"><p>Uma folha para cada trecho que você quer guardar.</p><button class="mbtn primary" id="ficFirstAdd" type="button">Escrever primeira citação</button></div>`}
+    </div>`;
+  const scroll=tabs.scrollTop;
+  tabs.innerHTML=list.map((quote,i)=>`<button class="fic-tab" id="ficTab${i}" role="tab" type="button" data-cid="${reviewText(quote.id)}" aria-controls="ficPage" aria-label="Citação ${i+1}, página ${reviewText(quote.page)}" aria-selected="${String(quote.id)===String(state.cid)}" tabindex="${String(quote.id)===String(state.cid)?0:-1}" style="--tab:${CIT_PASTEL[i%CIT_PASTEL.length]}" ${state.writing?"disabled":""}><span>${i+1}</span><span class="tab-page">p. ${reviewText(quote.page)}</span></button>`).join("");
+  tabs.scrollTop=scroll;
   el.querySelector("#ficClose").addEventListener("click",closeFichario);
-  el.querySelector("#ficAdd").addEventListener("click",()=>{ const f=el.querySelector("#cform"); f.hidden=false; el.querySelector("#cText").focus(); });
-  el.querySelector("#cCancel").addEventListener("click",()=>{ el.querySelector("#cform").hidden=true; });
-  el.querySelector("#cSave").addEventListener("click",()=>addCitacao(bookId));
-  el.querySelectorAll(".ficard[data-cid]").forEach(card=>{
-    card.addEventListener("click",e=>{
-      if(e.target.closest(".del")) return;
-      const c=(b.citacoes||[]).find(x=>x.id===card.dataset.cid);
-      if(c){ closeFichario(); openLeitura(bookId,c); }
+  el.querySelector("#ficAdd").addEventListener("click",()=>editCitacao(bookId));
+  el.querySelector("#ficFirstAdd")?.addEventListener("click",()=>editCitacao(bookId));
+  if(state.writing){
+    el.querySelector("#cCancel").addEventListener("click",()=>{ ficharioState={bookId,cid:state.returnCid,writing:false}; renderFichario(bookId); });
+    el.querySelector("#cform").addEventListener("submit",e=>{ e.preventDefault(); saveCitacao(bookId); });
+    el.querySelector("#cText").focus({preventScroll:true});
+  }else if(c){
+    el.querySelector("#ficEdit").addEventListener("click",()=>editCitacao(bookId,c.id));
+    el.querySelector("#ficRead").addEventListener("click",()=>openLeitura(bookId,c));
+    el.querySelector("#ficDelete").addEventListener("click",()=>delCitacao(bookId,c.id));
+  }
+  tabs.querySelectorAll(".fic-tab").forEach((tab,i)=>{
+    const select=cid=>{ ficharioState={bookId,cid,writing:false}; renderFichario(bookId); };
+    tab.addEventListener("click",()=>select(tab.dataset.cid));
+    tab.addEventListener("keydown",e=>{
+      let target=i;
+      if(["ArrowDown","ArrowRight"].includes(e.key)) target=(i+1)%list.length;
+      else if(["ArrowUp","ArrowLeft"].includes(e.key)) target=(i-1+list.length)%list.length;
+      else if(e.key==="Home") target=0;
+      else if(e.key==="End") target=list.length-1;
+      else return;
+      e.preventDefault(); select(list[target].id);
     });
   });
-  el.querySelectorAll(".del").forEach(d=>d.addEventListener("click",e=>{ e.stopPropagation(); delCitacao(bookId,d.dataset.del); }));
+  const selected=tabs.querySelector('[aria-selected="true"]');
+  if(selected&&!state.writing){ selected.focus({preventScroll:true}); selected.scrollIntoView({block:"nearest",inline:"nearest"}); }
+  else if(!state.writing) el.querySelector("#ficFirstAdd").focus({preventScroll:true});
 }
-async function addCitacao(bookId){
-  const el=$("#fichario");
-  const text=(el.querySelector("#cText").value||"").trim();
-  const page=Math.max(0,+el.querySelector("#cPage").value||0);
-  const b=BOOKS.find(x=>x.id===bookId); if(!b) return;
-  if(!text){ toast("Escreva a citação 🙂"); el.querySelector("#cText").focus(); return; }
-  if(!page){ toast("Informe o número da página"); el.querySelector("#cPage").focus(); return; }
-  const next=Object.assign({},b,{ citacoes:(b.citacoes||[]).concat([{ id:uid(), text, page, ts:Date.now() }]), updatedAt:Date.now() });
-  await putOf("books", next);
+async function saveCitacao(bookId){
+  const b=BOOKS.find(x=>x.id===bookId),state=ficharioState,el=$("#fichario");
+  const textEl=el.querySelector("#cText"),pageEl=el.querySelector("#cPage"),save=el.querySelector("#cSave");
+  if(!b||state?.bookId!==bookId||!textEl||save.disabled) return;
+  const text=textEl.value.trim();
+  if(!text){ toast("Escreva a citação."); textEl.focus(); return; }
+  if(!pageEl.reportValidity()) return;
+  const old=(b.citacoes||[]).find(c=>String(c.id)===String(state.cid));
+  const quote=Object.assign({},old||{id:uid(),ts:Date.now()},{text,page:+pageEl.value});
+  const citacoes=old?b.citacoes.map(c=>c.id===old.id?quote:c):(b.citacoes||[]).concat(quote);
+  const next=Object.assign({},b,{citacoes,updatedAt:Date.now()});
+  save.disabled=true;
+  try{ await putOf("books",next); }
+  catch(e){ save.disabled=false; toast("Não foi possível salvar. Sua citação continua na folha."); return; }
   const i=BOOKS.findIndex(x=>x.id===bookId); if(i>=0) BOOKS[i]=next;
-  markDirty(); renderFichario(bookId);
+  markDirty(); renderDiary(); refreshPanel();
+  if(ficharioState===state&&el.classList.contains("open")){ ficharioState={bookId,cid:quote.id,writing:false}; renderFichario(bookId); }
   toast("Citação guardada ✓");
 }
 async function delCitacao(bookId,cid){
-  const b=BOOKS.find(x=>x.id===bookId); if(!b) return;
-  const next=Object.assign({},b,{ citacoes:(b.citacoes||[]).filter(c=>c.id!==cid), updatedAt:Date.now() });
-  await putOf("books", next);
+  const b=BOOKS.find(x=>x.id===bookId),state=ficharioState;
+  if(!b||(b.citacoes||[]).every(c=>String(c.id)!==String(cid))||!confirm("Excluir esta citação?")) return;
+  const button=$("#ficDelete"); if(button?.disabled) return;
+  if(button) button.disabled=true;
+  const list=sortedCitacoes(b),index=list.findIndex(c=>String(c.id)===String(cid));
+  const next=Object.assign({},b,{citacoes:(b.citacoes||[]).filter(c=>String(c.id)!==String(cid)),updatedAt:Date.now()});
+  try{ await putOf("books",next); }
+  catch(e){ if(button) button.disabled=false; toast("Não foi possível excluir a citação."); return; }
   const i=BOOKS.findIndex(x=>x.id===bookId); if(i>=0) BOOKS[i]=next;
-  markDirty(); renderFichario(bookId);
+  markDirty(); renderDiary(); refreshPanel();
+  if(ficharioState===state&&$("#fichario").classList.contains("open")){
+    const remaining=sortedCitacoes(next);
+    ficharioState={bookId,cid:remaining[Math.min(index,remaining.length-1)]?.id||null,writing:false}; renderFichario(bookId);
+  }
 }
 
 /* ---------- página de leitura (citação) ---------- */
 function openLeitura(bookId, c){
   const b=BOOKS.find(x=>x.id===bookId);
   const el=$("#leitura");
+  leituraReturnFocus=document.activeElement;
   const title=(b&&b.title)||"";
   el.innerHTML=`<button class="mbtn ghost2 xclose" id="leiClose">✕</button>
     <div class="book">
@@ -1137,20 +1158,22 @@ function openLeitura(bookId, c){
       <div class="leaf" style="--delay:.12s"></div>
       <div class="leaf" style="--delay:.24s"></div>
       <div class="pagina">
-        <div class="page-mark">${title.replace(/</g,"&lt;")}</div>
-        <div class="quote">${(c.text||"").replace(/</g,"&lt;")}</div>
-        <div class="pnum">pág. ${c.page||"?"}</div>
+        <div class="page-mark">${reviewText(title)}</div>
+        <div class="quote" tabindex="0" aria-label="Citação"><div class="quote-text">${reviewText(c.text)}</div></div>
+        <div class="pnum">pág. ${reviewText(c.page||"?")}</div>
       </div>
     </div>`;
   el.classList.add("open");
   document.body.style.overflow="hidden";
   el.querySelector("#leiClose").addEventListener("click",closeLeitura);
-  el.addEventListener("click",e=>{ if(e.target===el) closeLeitura(); });
+  el.onclick=e=>{ if(e.target===el) closeLeitura(); };
+  el.querySelector("#leiClose").focus({preventScroll:true});
 }
 function closeLeitura(){
   const el=$("#leitura");
-  el.classList.remove("open"); el.innerHTML="";
-  document.body.style.overflow="";
+  el.classList.remove("open"); el.innerHTML=""; el.onclick=null;
+  document.body.style.overflow=$("#fichario").classList.contains("open")?"hidden":"";
+  leituraReturnFocus?.focus({preventScroll:true}); leituraReturnFocus=null;
 }
 
 /* ---------- virar a capa / contracapa ---------- */
@@ -1337,8 +1360,19 @@ async function loadData(){
   DIARY = raw.sort((a,b)=> a.date===b.date ? (String(b.id).localeCompare(String(a.id))) : b.date<a.date?-1:1);
   await loadMeta();
 }
-function streak(){
-  let n=0; const dates=new Set(DIARY.map(d=>d.date));
+function dashboardEntries(){
+  const budgets=new Map(BOOKS.map(b=>[b.id,{pages:pagesRead(b),epoch:+b.readingEpoch||0}]));
+  return DIARY.slice().sort((a,b)=>(+b.ts||0)-(+a.ts||0)||String(b.id).localeCompare(String(a.id))).flatMap(d=>{
+    const budget=budgets.get(d.bookId);
+    if(!budget||budget.pages<=0||budget.epoch!==(+d.readingEpoch||0)) return [];
+    const pages=Math.min(budget.pages,Math.max(0,+d.pages||0));
+    if(!pages) return [];
+    budget.pages-=pages;
+    return [Object.assign({},d,{pages})];
+  });
+}
+function streak(entries=dashboardEntries()){
+  let n=0; const dates=new Set(entries.map(d=>d.date));
   const start=new Date();
   if(dates.has(today())){
     while(dates.has(start.toISOString().slice(0,10))){ n++; start.setDate(start.getDate()-1); }
@@ -1351,24 +1385,24 @@ function streak(){
   return n;
 }
 function renderDiary(){
-  const tv=$("#dstats");
-  const hoje=DIARY.filter(d=>d.date===today()).reduce((s,d)=>s+(+d.pages||0),0);
-  const st=streak();
-  const tot=DIARY.reduce((s,d)=>s+(+d.pages||0),0);
+  const tv=$("#dstats"),entries=dashboardEntries();
+  const hoje=entries.filter(d=>d.date===today()).reduce((s,d)=>s+(+d.pages||0),0);
+  const st=streak(entries);
+  const tot=BOOKS.reduce((s,b)=>s+pagesRead(b),0);
   tv.innerHTML=`
     <div class="dbox"><div class="l">Hoje</div><div class="v">${hoje} pág</div></div>
     <div class="dbox"><div class="l">Sequência</div><div class="v">${st} dia${st!==1?"s":""}</div></div>
     <div class="dbox"><div class="l">Total lido</div><div class="v">${tot} pág</div></div>
-    <div class="dbox"><div class="l">Registros</div><div class="v">${DIARY.length}</div></div>`;
+    <div class="dbox"><div class="l">Registros</div><div class="v">${entries.length}</div></div>`;
   const wrap=$("#diaryList"); wrap.innerHTML="";
   const groups=new Map();
-  for(const en of DIARY){
+  for(const en of entries){
     const k=en.bookId||"?";
     if(!groups.has(k)) groups.set(k,{ book:BOOKS.find(x=>x.id===k)||null, entries:[] });
     groups.get(k).entries.push(en);
   }
   for(const b of BOOKS){
-    if(!groups.has(b.id) && (b.comentarios||b.resenha||(b.nota>0)||b.inicio))
+    if(!groups.has(b.id) && (b.comentarios||b.resenha||(b.citacoes||[]).length||(b.nota>0)||b.inicio||pagesRead(b)>0||b.status==="Lendo"))
       groups.set(b.id,{ book:b, entries:[] });
   }
   const arr=[...groups.values()].map(x=>{
@@ -1377,13 +1411,12 @@ function renderDiary(){
     x.sort=Math.max(lastTs, (x.book&&x.book.updatedAt)||0);
     return x;
   }).sort((a,b)=>b.sort-a.sort);
-  if(!arr.length){ wrap.innerHTML="<p style='color:var(--ink2);padding:20px 0;text-align:center'>Nenhuma leitura registrada ainda. Que tal começar hoje? 🙂</p>"; renderWeek(); return; }
+  if(!arr.length){ wrap.innerHTML="<p style='color:var(--ink2);padding:20px 0;text-align:center'>Nenhuma leitura registrada ainda. Que tal começar hoje? 🙂</p>"; renderWeek(entries); return; }
   let html="";
   for(const x of arr){
     const b=x.book;
     const title=b?b.title:(x.entries[0]?x.entries[0].bookId:"?");
     const fb=fallback(title);
-    const totalP=x.entries.reduce((s,e)=>s+(+e.pages||0),0);
     const last=x.entries.length?x.entries[x.entries.length-1].date:null;
     html+=`<div class="nbook" data-id="${b?b.id:""}" ${b?'title="Clique para abrir e editar"':""}>
       <button class="coverbtn" ${b?`data-flip="${b.id}" title="Toque para girar e ver a resenha"`:""}>
@@ -1394,12 +1427,12 @@ function renderDiary(){
         <div class="bmeta">
           ${b&&b.status?`<span>${b.status}</span>`:""}
           ${b&&b.nota?`<span class="st">${"★".repeat(Math.min(5,b.nota))}</span>`:""}
-          ${totalP?`<span>${totalP} pág</span>`:""}
           ${last?`<span>${last===today()?"hoje":fmtDate(last)}</span>`:""}
         </div>
+        ${b?progressHTML(b):""}
         ${b&&b.comentarios?`<div class="n">${b.comentarios.replace(/</g,"&lt;")}</div>`:""}
         ${b&&b.resenha?`<div class="r">${b.resenha.replace(/</g,"&lt;")}</div>`:""}
-        ${x.entries.length?`<div class="elog">${x.entries.map(e=>`<div class="erow"><b>${e.pages}</b> pág · ${fmtDate(e.date)}${e.note?` — <span>${e.note.replace(/</g,"&lt;")}</span>`:""}</div>`).join("")}</div>`:""}
+        ${b?`<button class="cite-btn" data-cites="${reviewText(b.id)}">🗂️ Fichário de citações <b>(${(b.citacoes||[]).length})</b></button>`:""}
       </div>
       ${b?`<span class="editl">✏️ editar</span>`:""}
     </div>`;
@@ -1414,11 +1447,14 @@ function renderDiary(){
     e.stopPropagation();
     if(btn.dataset.flip) openFlip(btn.dataset.flip);
   }));
-  renderWeek();
+  wrap.querySelectorAll("[data-cites]").forEach(btn=>btn.addEventListener("click",e=>{
+    e.stopPropagation(); openFichario(btn.dataset.cites);
+  }));
+  renderWeek(entries);
 }
-function renderWeek(){
+function renderWeek(entries=dashboardEntries()){
   const wrap=$("#week"); if(!wrap) return;
-  const by={}; DIARY.forEach(d=>{ const k=d.date; by[k]=(by[k]||0)+(+d.pages||0); });
+  const by={}; entries.forEach(d=>{ const k=d.date; by[k]=(by[k]||0)+(+d.pages||0); });
   const max=Math.max(1,...Object.values(by));
   const days=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d); }
   const now=today();
@@ -1434,47 +1470,6 @@ function fmtDate(iso){
   const [y,m,d]=iso.split("-");
   const dn=new Date(y,m-1,d).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
   return dn;
-}
-function openDiaryForm(preBookId, entry){
-  diaryEdit = entry ? entry : null;
-  $("#fbook").innerHTML=`<option value="">— escolha o livro —</option>`+BOOKS.map(b=>`<option value="${b.id}" ${b.id===(entry?entry.bookId:preBookId)?"selected":""}>${b.title}</option>`).join("");
-  $("#fdate").value=entry?(entry.date||today()):today();
-  $("#fpages").value=entry?((entry.pages!==undefined&&entry.pages!==null)?entry.pages:""):10;
-  $("#fnote").value=entry?(entry.note||""):"";
-  const h=$("#dform .sheet h2"); if(h) h.textContent = entry? "✏️ Editar registro" : "📖 Registrar leitura";
-  const sv=$("#fSave"); if(sv) sv.textContent = entry? "Salvar alteração" : "Salvar";
-  $("#dform").classList.add("open");
-  setTimeout(()=>$("#fpages").focus(),100);
-}
-async function saveDiaryEntry(){
-  const bid=$("#fbook").value;
-  if(!bid){ toast("Escolha um livro."); return; }
-  const pages=Math.max(0,+$("#fpages").value||0);
-  const date=$("#fdate").value||today();
-  const note=$("#fnote").value.trim();
-  const ed=diaryEdit;
-  let entry;
-  if(ed){ entry=Object.assign({},ed,{ bookId:bid, date, pages, note, ts:Date.now() }); }
-  else{ entry={ id:uid(), bookId:bid, date, pages, note, ts:Date.now() }; }
-  await putOf("diary", entry);
-  diaryEdit=null;
-  const b=BOOKS.find(x=>x.id===bid);
-  if(b){
-    const next=Object.assign({},b);
-    next.updatedAt=Date.now();
-    const delta=pages-(ed?(+ed.pages||0):0);
-    next.paginasLidas=Math.max(0,(b.paginasLidas||0)+delta);
-    if(next.paginas>0 && next.paginasLidas>=next.paginas) next.status="Lido";
-    else if(next.status==="Quero ler"&&pages>0) next.status="Lendo";
-    if(next.status==="Lendo"&&!next.inicio) next.inicio=today();
-    if(next.status==="Lido"&&!next.fim) next.fim=today();
-    await putOf("books", next);
-    const i=BOOKS.findIndex(x=>x.id===bid); if(i>=0) BOOKS[i]=next;
-  }
-  $("#dform").classList.remove("open");
-  await loadData(); renderShelves(); renderDiary(); refreshPanel();
-  toast(META.githubToken ? (ed?"Alteração salva ✓":"Registrado! 📖") : "Salvo só neste aparelho — configure 🔄 para sincronizar");
-  markDirty();
 }
 
 /* ---------- CSV ---------- */
@@ -1689,10 +1684,10 @@ async function init(){
     else if($("#flipview").classList.contains("open")) closeFlip();
     else if($("#fichario").classList.contains("open")) closeFichario();
   });
-  $("#btnAddDiary").addEventListener("click",()=>openDiaryForm());
-  $("#fCancel").addEventListener("click",()=>{ diaryEdit=null; $("#dform").classList.remove("open"); });
-  $("#fSave").addEventListener("click",saveDiaryEntry);
-  $("#fdate").value=today();
+  $("#btnAddDiary").addEventListener("click",()=>{
+    const b=BOOKS.find(book=>book.status==="Lendo")||BOOKS[0];
+    if(b) openBook(b.id); else toast("Adicione um livro à biblioteca primeiro.");
+  });
   $("#btnImport").addEventListener("click",()=>$("#fileCSV").click());
   $("#fileCSV").addEventListener("change",e=>{ if(e.target.files[0]) importCSV(e.target.files[0]); e.target.value=""; });
   $("#btnExport").addEventListener("click",exportBackup);

@@ -1,13 +1,5 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const http = require("node:http");
-const os = require("node:os");
-const path = require("node:path");
-const { spawn } = require("node:child_process");
+const runBrowserTest=require("./browser-test.cjs");
 
-const root = path.resolve(__dirname, "..");
-const source = fs.readFileSync(path.join(root, "index.html"), "utf8");
-new (require("node:vm").Script)(source.match(/<script>([\s\S]*?)<\/script>/)[1]);
 const test = async function(){
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const check=(value,message)=>{ if(!value) throw new Error(message); };
@@ -109,38 +101,4 @@ const test = async function(){
     document.body.innerHTML='<pre id="testout">'+JSON.stringify({ok:false,error:error.message,errors})+'</pre>';
   }
 };
-const html=source.replace("<head>",'<head><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:; font-src \'none\'; connect-src \'self\'">').replace(/<link[^>]*https:\/\/fonts[^>]*>/g,"").replace("init();\n</script>",`(${test.toString()})();\n</script>`);
-const server=http.createServer((req,res)=>{
-  if(req.url.startsWith("/__test")){ res.setHeader("Content-Type","text/html; charset=utf-8"); res.end(html); return; }
-  const file=path.join(root,new URL(req.url,"http://localhost").pathname);
-  fs.readFile(file,(error,data)=>{ res.statusCode=error?404:200; res.end(error?"Not found":data); });
-});
-async function run(args){
-  const profile=fs.mkdtempSync(path.join(os.tmpdir(),"biblioteca-resenha-"));
-  try{
-    const result=await new Promise((resolve,reject)=>{
-      const child=spawn("chromium",["--headless=new","--no-sandbox","--disable-gpu","--disable-background-networking",`--user-data-dir=${profile}`,"--virtual-time-budget=16000","--dump-dom",...args,`http://127.0.0.1:${server.address().port}/__test`]);
-      let stdout="",stderr="";
-      child.stdout.on("data",data=>stdout+=data);
-      child.stderr.on("data",data=>stderr+=data);
-      const timer=setTimeout(()=>child.kill("SIGKILL"),45000);
-      child.on("error",reject);
-      child.on("close",code=>{ clearTimeout(timer); code===0?resolve(stdout):reject(new Error(`Chromium ${code}: ${stderr.slice(-1500)}`)); });
-    });
-    const match=result.match(/<pre id="testout">(\{[^<]*)<\/pre>/);
-    assert.ok(match,`Resultado do teste ausente: ${result.slice(-1500)}`);
-    const out=JSON.parse(match[1].replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&"));
-    assert.equal(out.ok,true,JSON.stringify(out));
-    console.log(JSON.stringify(out));
-  }finally{
-    fs.rmSync(profile,{recursive:true,force:true});
-  }
-}
-server.listen(0,"127.0.0.1",async()=>{
-  try{
-    await run(["--window-size=1280,900"]);
-    await run(["--window-size=500,844","--force-prefers-reduced-motion=reduce"]);
-    await run(["--window-size=600,480"]);
-  }catch(error){ console.error(error); process.exitCode=1; }
-  finally{ server.close(); }
-});
+runBrowserTest(test).catch(error=>{ console.error(error); process.exitCode=1; });
