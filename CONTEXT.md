@@ -3,7 +3,7 @@
 Documento de contexto do projeto **Minha Biblioteca** (PWA de estante + diário de leitura),
 com histórico do que foi feito, arquitetura, decisões e estado atual.
 
-Última atualização: 2026-10-11 (após deploy `bib-v20`).
+Última atualização: 2026-10-12 (após deploy `bib-v25`).
 
 ---
 
@@ -49,8 +49,18 @@ biblioteca-virtual/
 ├── data/
 │   └── sync.json           # dados sincronizados (livros + registros + citações)
 ├── scripts/
-│   └── icons.cjs           # geração de ícones do PWA
-├── identidade-visual/      # referências visuais (estrutura + 4 fotos de cores)
+│   ├── browser-test.cjs    # executor isolado de teste com Chromium headless
+│   ├── icons.cjs           # geração de ícones do PWA
+│   ├── test-citacoes.cjs   # testes do fichário de citações
+│   ├── test-dashboard.cjs  # testes do dashboard
+│   ├── test-estante.cjs    # testes da estante e prateleiras
+│   ├── test-filtros.cjs    # testes dos filtros de busca/gênero
+│   ├── test-leitura.cjs    # testes do modal e progresso
+│   ├── test-resenha.cjs    # testes da resenha (caderno)
+│   └── test-sync.cjs       # testes de sincronização de citações
+├── identidade-visual/      # referências visuais (estrutura + 4 fotos de cores + citações)
+├── todo.md                 # roadmap de funcionalidades e correções
+├── todo-isbn.md            # estudo separado da integração por ISBN
 └── README.md
 ```
 
@@ -145,6 +155,18 @@ Mudanças commitadas não apareciam no navegador.
   service worker + caches e recarrega.
 - **Bump de `VERSION`** (`bib-vN`) a cada deploy.
 
+### Cache de capas externas (v24+)
+
+- Capas de Open Library e Google Books são cacheadas com estratégia cache-first para
+  funcionar offline. Respostas `ok` ou `opaque` são armazenadas no cache do SW.
+
+### Notificações (v24+)
+
+- Mensagem `notify`: exibe notificação imediata com título e corpo personalizáveis.
+- Mensagem `schedule`: agenda notificação futura via `NotificationTrigger` (experimental,
+  depende de suporte do navegador).
+- Clique na notificação foca a janela existente ou abre uma nova.
+
 ---
 
 ## 7. Funcionalidades interativas (Diário)
@@ -217,6 +239,31 @@ Gestão: `Esc` fecha o overlay aberto; clique no fundo do overlay fecha.
 - Um cartão por livro; um modal único com registros editáveis inline.
 - Funções: `entryRowHTML`, `bindEntryRow`, `addEntryRow`, `saveEntryRow`.
 
+### 7.8 Dashboard (`bib-v24`)
+
+- `dashboardEntries` é compartilhado por Hoje, sequência, registros e gráfico semanal.
+- Limita as contribuições ao progresso atual de cada livro; livro zerado não contribui.
+- `readingEpoch` marca reinícios e é sincronizado no livro e nas novas sessões.
+
+### 7.9 Filtros de busca e gênero (`bib-v25`)
+
+- Campo de busca por título/autor na estante.
+- Dropdown (`select`) de gêneros: "Todos os gêneros" + gêneros disponíveis sem
+  duplicatas, em ordem alfabética, case-insensitive.
+- Combina com filtro de status; filtra apenas a visualização, sem alterar dados.
+
+### 7.10 Prateleiras de livros lidos (`bib-v25`)
+
+- Livros com status "Lido" ficam em seção separada no final da Estante.
+- Mudança de status move o livro entre as seções; capas clicáveis e modal preservados.
+- Prateleiras vazias não são exibidas; filtros se aplicam também aos lidos.
+
+### 7.11 Exclusão de citações e `deletedCitacoes` (`bib-v25`)
+
+- `delCitacao` grava exclusão e registra o ID em `deletedCitacoes` para sincronização.
+- `pickOV` foi ajustado para não descartar `citacoes: []` (array vazio).
+- Merge entre aparelhos respeita exclusões explícitas.
+
 ---
 
 ## 8. Design / identidade visual
@@ -240,53 +287,38 @@ madeira:  #917157
 
 Sem jsdom no ambiente → testes com Chromium headless via `--dump-dom`.
 
-### 9.1 Servidor de teste
+### 9.1 Executor centralizado (`browser-test.cjs`)
 
-`/tmp/opencode/srv.js` — servidor estático Node em `127.0.0.1:8124`.
+`scripts/browser-test.cjs` — levanta servidor estático, injeta script de teste em
+`index.html`, executa no Chromium headless e extrai o resultado. Usa armazenamento em
+memória e sincronização desativada para não alterar IndexedDB ou dados reais do GitHub.
+Perfis temporários são removidos ao final.
 
-```bash
-node /tmp/opencode/srv.js & S=$!; sleep 1.2; ... ; kill $S
-```
+### 9.2 Scripts de teste
 
-> `python3 -m http.server` **não funciona** neste ambiente (curl retorna `000`).
+Todos executados com `node scripts/test-<nome>.cjs`:
 
-### 9.2 Gerador de teste
+| Script               | O que testa |
+|----------------------|-------------|
+| `test-resenha.cjs`   | Fluxo capa → contracapa → caderno de resenha |
+| `test-leitura.cjs`   | Modal do livro e progresso compartilhado |
+| `test-citacoes.cjs`  | Fichário de citações: abas, editor, exclusão |
+| `test-dashboard.cjs` | Dashboard: entradas, sequência, gráfico semanal |
+| `test-estante.cjs`   | Estante e prateleiras de livros lidos |
+| `test-filtros.cjs`   | Filtros de busca por título/autor e dropdown de gênero |
+| `test-sync.cjs`      | Sincronização de citações e `deletedCitacoes` |
 
-`/tmp/opencode/mktest.js` — copia `index.html` → `__t.html` (na raiz do projeto) e injeta
-um `<script>` que, após o `load`, espera, semeia um livro de teste, dispara o fluxo e grava
-o resultado num `<div id="testout">TESTOUT {json}</div>`.
+Testes validam viewport ampla e compacta, incluindo `prefers-reduced-motion`.
 
-> **`__t.html` é temporário: remover SEMPRE antes de commit.**
+### 9.3 Execução legada (pré-v21)
 
-### 9.3 Execução
+O método original usava `/tmp/opencode/srv.js` + `/tmp/opencode/mktest.js` com
+`__t.html` temporário. Substituído por `browser-test.cjs` a partir de `bib-v21`.
 
-```bash
-node /tmp/opencode/mktest.js
-node /tmp/opencode/srv.js >/tmp/opencode/srv.log 2>&1 & S=$!
-sleep 1.2
-timeout -s KILL 40 chromium --headless=new --no-sandbox --disable-gpu \
-  --virtual-time-budget=12000 --dump-dom \
-  "http://127.0.0.1:8124/__t.html" >/tmp/opencode/dom.html 2>/dev/null
-kill $S
-grep -o 'TESTOUT [^<]*' /tmp/opencode/dom.html | tail -1
-rm -f /home/deysi/workspace/biblioteca-virtual/__t.html
-```
-
-Notas:
+Notas preservadas:
 - Usar `timeout -s KILL` (Chromium às vezes ignora SIGTERM).
 - Redirecionar a saída do Chromium para arquivo (evita o shell travar no pipe).
 - Método **CDP/`--remote-debugging` foi abandonado** (travava / timeout) → `--dump-dom`.
-
-### 9.4 Resultado do teste final (bib-v20)
-
-Clicando na capa real do diário:
-
-```json
-{"err":[],"coverFound":true,"flipOpen":true,"flipped":true,"cadernoOpen":true,
- "cadVal":"Esta e minha resenha de teste."}
-```
-
-Ou seja: capa → gira para contracapa → clique abre o caderno com a resenha carregada. ✅
 
 ---
 
@@ -306,7 +338,13 @@ Ou seja: capa → gira para contracapa → clique abre o caderno com a resenha c
 | bib-v17   | `60834bd` | SW `cache:"reload"` + auto-reload |
 | bib-v18   | `60d7adf` | Botão "↻ Forçar atualização do app" (`#swReset`) |
 | bib-v19   | `7f9f609` | Capa sempre clicável (`.cwrap` + `.fbmini` de reserva) |
-| bib-v20   | `fce4030` | Fix `id="fbook"` duplicado (flip→caderno usa `.flip-book`). **Atual** |
+| bib-v20   | `fce4030` | Fix `id="fbook"` duplicado (flip→caderno usa `.flip-book`) |
+| bib-v21   | `b7038ec` | Conectar contracapa ao caderno de resenha; testes headless |
+| bib-v24   | `d06f107` | Progresso unificado, fichário refinado, dashboard, notificações no SW, cache de capas externas |
+| bib-v25   | `67b765b` | Filtros de busca/gênero (dropdown), prateleiras de lidos, correção de exclusão/sync de citações (`deletedCitacoes`). **Atual** |
+
+> **Nota**: v22 e v23 não existem como commits separados; a numeração saltou direto
+> de v21 para v24 no desenvolvimento.
 
 Commits de sync (`data/sync.json`) são criados via API (ex.: `198d16f`) e intercalam a
 história; ao dar push, sempre `git pull --rebase origin main` antes.
@@ -354,11 +392,15 @@ curl -s "https://deysilopes.github.io/biblioteca-virtual/sw.js?v=$(date +%s)" | 
 
 ## 13. Pendências / próximos passos
 
-- [ ] Pedir ao usuário para testar o fluxo capa → contracapa → caderno e confirmar.
+Roadmap completo em `todo.md`. Itens prioritários:
+
 - [ ] **Revogar/rotacionar** o token fine-grained do GitHub que foi exposto no chat.
-- [ ] Se ainda houver problema no aparelho: garantir hard refresh / `#swReset`
-      (`bib-v20` pode levar ~10 min para propagar no Pages/CDN).
+- [ ] Validar no aparelho o fluxo completo após `bib-v25`: filtros, prateleiras de lidos,
+      exclusão de citações e sincronização entre dispositivos.
 - [ ] Validação estética depende do usuário (o assistente não enxerga imagens).
+- [ ] Exportação CSV da biblioteca (importação já existe).
+- [ ] Revisão de `exportBackup` (pode incluir `githubToken` no `META`).
+- [ ] Funcionalidades futuras: IA para Reels/TikTok, tags, séries, ISBN (ver `todo.md`).
 
 ---
 
@@ -369,3 +411,5 @@ curl -s "https://deysilopes.github.io/biblioteca-virtual/sw.js?v=$(date +%s)" | 
   `3f61815b-43b3-818c-9486-c2a0f3a81179`, token em `~/.config/opencode/notion-token`).
 - Todo o JS do app é inline em `index.html`; qualquer alteração exige bump do `sw.js` para
   que usuários recebam a nova versão.
+- O `sw.js` atual está com `VERSION = "bib-v24"` mas o commit `67b765b` (v25) não bumped
+  o SW; considerar alinhar na próxima alteração.
