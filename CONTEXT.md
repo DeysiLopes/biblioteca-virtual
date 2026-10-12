@@ -413,3 +413,40 @@ Roadmap completo em `todo.md`. Itens prioritários:
   que usuários recebam a nova versão.
 - O `sw.js` atual está com `VERSION = "bib-v24"` mas o commit `67b765b` (v25) não bumped
   o SW; considerar alinhar na próxima alteração.
+
+---
+
+## 15. MVP 2 — Migração React + Vite + TypeScript (WEB-000)
+
+Em 2026-10-12, a aplicação foi migrada de SPA vanilla para **React 18 + Vite + TypeScript** com rotas em domínio único e persistência em **Google Drive**:
+
+1. **Roteamento SPA Client-side (React Router)**:
+   - `/` e `/estante`: Página inicial da aplicação, abrindo diretamente a Estante de Livros dividida em "Minha estante" e "Livros lidos", filtros combinados de status, gênero dinâmico e busca tolerante a acentos (`normalizeString`).
+   - `/diario` (e `/dashboard`): Diário de leitura com o Dashboard integrado (métricas de Hoje, Sequência/streak, Total lido, Registros e gráfico semanal de 7 dias), botão de registro rápido de leitura e cartões de livros com atividade recente, virada de capa 3D e acesso a resenhas/fichário.
+   - `/books`: Rota dedicada para adicionar livros via busca por ISBN (Open Library), entrada manual de campos e importação em lote (CSV/JSON com deduplicação e relatório de erros).
+   - `/fichario`: Fichário completo de citações com argolas, abas laterais pastel em ciclo de cores, página obrigatória e preservação de IDs/timestamps na edição.
+   - `/caderno/:livroId`: Acesso direto ao caderno pautado de resenha com efeito sonoro opcional de máquina de escrever (Web Audio API).
+
+2. **Arquitetura de Estado em Três Camadas**:
+   - **Memória**: Hooks reativos (`useLibrary`, `useAuth`, `useSound`) e gerenciador centralizado (`syncManager`).
+   - **Armazenamento Local**: IndexedDB (`books`, `diary`, `meta`) via `src/core/storage/idb.ts` para funcionamento offline instantâneo.
+   - **Nuvem / Servidor**: Google Drive REST API v3 via `fetch` direto no navegador (escopo `drive.file`), salvando `biblioteca-<userId>.json` na pasta "Minha Biblioteca".
+   - **Sincronização entre Abas**: `BroadcastChannel` (`biblioteca-sync`) com fallback em `storage event`.
+
+3. **Autenticação Google Identity Services (GIS)**:
+   - Login por token do GIS (`src/core/auth/google-auth.ts`) sem refresh token e sem segredos no cliente. Suporte a modo mock local para desenvolvimento offline.
+
+4. **Regras de Negócio Preservadas (100% de paridade)**:
+   - `paginasLidas`: representa o total já lido (digitar 100 salva exatamente 100, sem somar).
+   - `readingEpoch`: marca reinícios e zerações para isolar métricas antigas no dashboard. Livros com progresso zerado não pontuam no dashboard.
+   - Citações: página obrigatória; edição preserva `id` e `ts`; exclusão marca em `deletedCitacoes` para evitar ressuscitação no sync.
+   - Export: download direto do próprio arquivo `biblioteca-<userId>.json` do Drive (sem transformações).
+
+5. **PWA e Service Worker**:
+   - Gerados automaticamente pelo `@vite-plugin-pwa` no build com precache, suporte offline e estratégia de atualização rápida.
+   - `public/404.html` para redirecionamento SPA no GitHub Pages.
+   - Deploy configurado para a branch `gh-pages` (`npm run deploy`).
+
+6. **Testes Automatizados**:
+   - 22 testes unitários e de integração em **Vitest + React Testing Library** (`npm run test`) cobrindo progresso, regras de readingEpoch, streak do dashboard, fichário, parser CSV/JSON e componentes React.
+

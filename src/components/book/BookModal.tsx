@@ -1,0 +1,274 @@
+import React, { useState, useEffect } from 'react';
+import { Book, BookStatus } from '../../core/models/book';
+import { calculatePercentage, applyBookProgressUpdate } from '../../core/business/progress';
+import { getBookFallback } from './BookCard';
+
+interface BookModalProps {
+  book: Book;
+  allBooks: Book[];
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (updatedBook: Book, newDiaryEntry?: any) => Promise<void>;
+  onSelectBook: (bookId: string) => void;
+}
+
+export const BookModal: React.FC<BookModalProps> = ({
+  book,
+  allBooks,
+  isOpen,
+  onClose,
+  onSave,
+  onSelectBook,
+}) => {
+  const [paginasLidas, setPaginasLidas] = useState<number>(book.paginasLidas || 0);
+  const [totalPaginas, setTotalPaginas] = useState<number>(book.paginas || 0);
+  const [status, setStatus] = useState<BookStatus>(book.status || 'Quero ler');
+  const [tipo, setTipo] = useState<string>(book.tipo || '');
+  const [inicio, setInicio] = useState<string>(book.inicio || '');
+  const [fim, setFim] = useState<string>(book.fim || '');
+  const [comentarios, setComentarios] = useState<string>(book.comentarios || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (book) {
+      setPaginasLidas(book.paginasLidas || 0);
+      setTotalPaginas(book.paginas || 0);
+      setStatus(book.status || 'Quero ler');
+      setTipo(book.tipo || '');
+      setInicio(book.inicio || '');
+      setFim(book.fim || '');
+      setComentarios(book.comentarios || '');
+    }
+  }, [book]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !book) return null;
+
+  const perc = calculatePercentage(paginasLidas, totalPaginas);
+  const fb = getBookFallback(book.title);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { updatedBook, newDiaryEntry } = applyBookProgressUpdate(
+        book,
+        paginasLidas,
+        totalPaginas || null,
+        status,
+        tipo || null,
+        inicio || null,
+        fim || null,
+        comentarios
+      );
+      await onSave(updatedBook, newDiaryEntry);
+      onClose();
+    } catch (err) {
+      console.error('Erro ao salvar livro:', err);
+      alert('Erro ao salvar o livro.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      id="modal"
+      className="open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="panelTitle"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="panel" id="panel">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <h2 id="panelTitle" className="serif" style={{ fontSize: 26, margin: 0, color: 'var(--ink)' }}>
+              {book.title}
+            </h2>
+            {book.author && (
+              <p style={{ margin: '4px 0 0', color: 'var(--ink2)', fontSize: 14 }}>
+                {book.author}
+              </p>
+            )}
+          </div>
+          <button
+            className="hbtn ghost"
+            onClick={onClose}
+            aria-label="Fechar modal"
+            style={{ padding: '6px 10px', fontSize: 16 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Trocar de livro */}
+        <div className="field" style={{ marginTop: 14 }}>
+          <label htmlFor="bId">Trocar de livro:</label>
+          <select
+            id="bId"
+            value={book.id}
+            onChange={(e) => onSelectBook(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+          >
+            {allBooks.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.title} {b.author ? `— ${b.author}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Status e Tipo */}
+        <div className="row2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+          <div className="field">
+            <label htmlFor="bStatus">Status:</label>
+            <select
+              id="bStatus"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as BookStatus)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            >
+              <option value="Quero ler">Quero ler</option>
+              <option value="Lendo">Lendo</option>
+              <option value="Lido">Lido</option>
+              <option value="Abandonado">Abandonado</option>
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="bTipo">Tipo:</label>
+            <select
+              id="bTipo"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            >
+              <option value="">(nenhum)</option>
+              <option value="Lazer">Lazer</option>
+              <option value="Estudo">Estudo</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Progresso Dinâmico */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--ink2)', marginBottom: 4 }}>
+            <span>Progresso da leitura</span>
+            <strong style={{ color: 'var(--accent)' }}>{perc}%</strong>
+          </div>
+          <div
+            className="pp"
+            role="progressbar"
+            aria-valuenow={perc}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            style={{ width: '100%', height: 10, borderRadius: 5, background: 'oklch(0 0 0 / 0.4)', overflow: 'hidden' }}
+          >
+            <div
+              style={{
+                width: `${perc}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, var(--green), var(--accent))',
+                transition: 'width 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Inputs de Páginas Lidas e Total */}
+        <div className="row2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+          <div className="field">
+            <label htmlFor="bPagesLidas">Páginas lidas (total atual):</label>
+            <input
+              id="bPagesLidas"
+              type="number"
+              min={0}
+              value={paginasLidas}
+              onChange={(e) => setPaginasLidas(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="bTotal">Total de páginas:</label>
+            <input
+              id="bTotal"
+              type="number"
+              min={0}
+              value={totalPaginas}
+              onChange={(e) => setTotalPaginas(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            />
+          </div>
+        </div>
+
+        {/* Datas Início e Fim */}
+        <div className="row2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+          <div className="field">
+            <label htmlFor="bInicio">Data de início:</label>
+            <input
+              id="bInicio"
+              type="date"
+              value={inicio}
+              onChange={(e) => setInicio(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="bFim">Data de término:</label>
+            <input
+              id="bFim"
+              type="date"
+              value={fim}
+              onChange={(e) => setFim(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            />
+          </div>
+        </div>
+
+        {/* Comentários */}
+        <div className="field" style={{ marginTop: 12 }}>
+          <label htmlFor="bComent">Anotações / Comentários:</label>
+          <textarea
+            id="bComent"
+            rows={3}
+            value={comentarios}
+            onChange={(e) => setComentarios(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)', resize: 'vertical' }}
+          />
+        </div>
+
+        {/* Ações */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+          <button
+            className="mbtn"
+            onClick={onClose}
+            style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)', cursor: 'pointer' }}
+          >
+            Fechar
+          </button>
+          <button
+            className="mbtn primary"
+            onClick={handleSave}
+            disabled={saving}
+            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--green)', color: '#0f1a12', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
