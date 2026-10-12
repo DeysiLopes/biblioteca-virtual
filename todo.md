@@ -2,6 +2,16 @@
 
 Status: planejamento. Nenhuma integração ou funcionalidade nova implementada nesta etapa.
 
+## Retomar esta sessão
+
+Para continuar amanhã na mesma sessão do Devin, execute na pasta do projeto:
+
+```bash
+devin -r excellent-racer
+```
+
+Ao retomar, ler este `todo.md` e escolher a próxima prioridade antes de implementar.
+
 ## Objetivo
 
 Permitir informar o ISBN de um livro, consultar uma API de metadados e revisar os dados encontrados antes de adicionar o livro ou completar seu cadastro na Minha Biblioteca.
