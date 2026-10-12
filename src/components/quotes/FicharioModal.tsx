@@ -32,7 +32,9 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
 
   useEffect(() => {
     if (quotes.length > 0) {
-      if (!selectedQuoteId || !quotes.some(q => q.id === selectedQuoteId)) {
+      // Só auto-seleciona fora do modo edição — durante "+ Nova ficha"
+      // selectedQuoteId fica null de propósito para criar em vez de editar
+      if (!isEditing && (!selectedQuoteId || !quotes.some(q => q.id === selectedQuoteId))) {
         setSelectedQuoteId(quotes[0].id);
       }
     } else {
@@ -41,7 +43,7 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
       setEditText('');
       setEditPage('');
     }
-  }, [book, selectedQuoteId, quotes]);
+  }, [book, selectedQuoteId, quotes, isEditing]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -102,6 +104,12 @@ export const FicharioModal: React.FC<FicharioModalProps> = ({
         selectedQuoteId || undefined
       );
       await onSaveBook(updatedBook);
+      // Seleciona a ficha recém-criada (última da lista) ou a editada
+      const savedId =
+        selectedQuoteId ||
+        updatedBook.citacoes?.[updatedBook.citacoes.length - 1]?.id ||
+        null;
+      setSelectedQuoteId(savedId);
       setIsEditing(false);
     } catch (err: any) {
       alert(err.message || 'Erro ao salvar citação.');

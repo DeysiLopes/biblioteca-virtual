@@ -12,27 +12,33 @@ import { FicharioModal } from '../components/quotes/FicharioModal';
 export const DiaryPage: React.FC = () => {
   const { books, summary, saveBook } = useLibrary();
 
-  const [modalBook, setModalBook] = useState<Book | null>(null);
-  const [flipBook, setFlipBook] = useState<Book | null>(null);
+  // Guardamos só os IDs — os modais derivam o livro da lista atual,
+  // então enxergam edições e mudanças do sync sem precisar reabrir
+  const [modalBookId, setModalBookId] = useState<string | null>(null);
+  const [flipBookId, setFlipBookId] = useState<string | null>(null);
   const [notebookBook, setNotebookBook] = useState<Book | null>(null);
   const [coverOrigin, setCoverOrigin] = useState<CoverOrigin | null>(null);
-  const [quotesBook, setQuotesBook] = useState<Book | null>(null);
+  const [quotesBookId, setQuotesBookId] = useState<string | null>(null);
+
+  const modalBook = modalBookId ? books.find((b) => b.id === modalBookId) ?? null : null;
+  const flipBook = flipBookId ? books.find((b) => b.id === flipBookId) ?? null : null;
+  const quotesBook = quotesBookId ? books.find((b) => b.id === quotesBookId) ?? null : null;
 
   // Trava o scroll da página enquanto qualquer overlay estiver aberto (como no MVP 1)
   useEffect(() => {
-    const anyOpen = Boolean(modalBook || flipBook || quotesBook);
+    const anyOpen = Boolean(modalBookId || flipBookId || quotesBookId);
     document.body.style.overflow = anyOpen ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [modalBook, flipBook, quotesBook]);
+  }, [modalBookId, flipBookId, quotesBookId]);
 
   const handleRegisterToday = () => {
     const lendo = books.find((b) => b.status === 'Lendo');
     if (lendo) {
-      setModalBook(lendo);
+      setModalBookId(lendo.id);
     } else if (books.length > 0) {
-      setModalBook(books[0]);
+      setModalBookId(books[0].id);
     }
   };
 
@@ -57,7 +63,6 @@ export const DiaryPage: React.FC = () => {
         updatedAt: Date.now(),
       };
       await saveBook(updated);
-      setFlipBook(updated);
     }
     setNotebookBook(null);
     setCoverOrigin(null);
@@ -120,9 +125,9 @@ export const DiaryPage: React.FC = () => {
             <DiaryCard
               key={b.id}
               book={b}
-              onOpenCover={(book) => setFlipBook(book)}
-              onOpenModal={(book) => setModalBook(book)}
-              onOpenQuotes={(book) => setQuotesBook(book)}
+              onOpenCover={(book) => setFlipBookId(book.id)}
+              onOpenModal={(book) => setModalBookId(book.id)}
+              onOpenQuotes={(book) => setQuotesBookId(book.id)}
             />
           ))
         ) : (
@@ -138,12 +143,9 @@ export const DiaryPage: React.FC = () => {
           book={modalBook}
           allBooks={books}
           isOpen={true}
-          onClose={() => setModalBook(null)}
+          onClose={() => setModalBookId(null)}
           onSave={saveBook}
-          onSelectBook={(id) => {
-            const found = books.find((b) => b.id === id);
-            if (found) setModalBook(found);
-          }}
+          onSelectBook={(id) => setModalBookId(id)}
         />
       )}
 
@@ -152,7 +154,7 @@ export const DiaryPage: React.FC = () => {
           key={flipBook.id}
           book={flipBook}
           isOpen={!notebookBook}
-          onClose={() => setFlipBook(null)}
+          onClose={() => setFlipBookId(null)}
           onOpenNotebook={handleOpenNotebookFromFlip}
         />
       )}
@@ -171,7 +173,7 @@ export const DiaryPage: React.FC = () => {
         <FicharioModal
           book={quotesBook}
           isOpen={true}
-          onClose={() => setQuotesBook(null)}
+          onClose={() => setQuotesBookId(null)}
           onSaveBook={saveBook}
         />
       )}

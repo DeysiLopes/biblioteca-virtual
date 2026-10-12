@@ -75,10 +75,28 @@ export class LibrarySyncManager {
     this.inMemoryDiary = localDiary;
     this.isLoaded = true;
 
-    // 2. Se autenticado, sincroniza com Google Drive em background
-    this.pullFromDriveQuietly();
+    // 2. Sincroniza com o Drive agora (se autenticado) e toda vez que o
+    // usuário fizer login nesta sessão — sem precisar clicar em nada
+    this.bindAuthSync();
 
     return { books: this.inMemoryBooks, diary: this.inMemoryDiary };
+  }
+
+  private authSyncBound = false;
+  private lastSyncedUserId: string | null = null;
+
+  private bindAuthSync(): void {
+    if (this.authSyncBound) return;
+    this.authSyncBound = true;
+
+    authService.subscribe((state) => {
+      const uid = state.isAuthenticated ? state.user?.id ?? null : null;
+      if (uid && uid !== this.lastSyncedUserId) {
+        this.lastSyncedUserId = uid;
+        this.pullFromDriveQuietly();
+      }
+      if (!uid) this.lastSyncedUserId = null;
+    });
   }
 
   public getBooks(): Book[] {

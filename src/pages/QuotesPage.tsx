@@ -5,7 +5,11 @@ import { FicharioModal } from '../components/quotes/FicharioModal';
 
 export const QuotesPage: React.FC = () => {
   const { books, saveBook } = useLibrary();
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  // Derivado da lista — o fichário enxerga novas fichas sem reabrir
+  const selectedBook = selectedBookId
+    ? books.find((b) => b.id === selectedBookId) ?? null
+    : null;
 
   // Livros que possuem citações ou todos os livros para adicionar
   const booksWithQuotes = books.filter((b) => b.citacoes && b.citacoes.length > 0);
@@ -29,10 +33,7 @@ export const QuotesPage: React.FC = () => {
         </label>
         <select
           id="bookSelect"
-          onChange={(e) => {
-            const found = books.find((b) => b.id === e.target.value);
-            if (found) setSelectedBook(found);
-          }}
+          onChange={(e) => setSelectedBookId(e.target.value)}
           value=""
           style={{
             width: '100%',
@@ -60,7 +61,7 @@ export const QuotesPage: React.FC = () => {
           {booksWithQuotes.map((b) => (
             <div
               key={b.id}
-              onClick={() => setSelectedBook(b)}
+              onClick={() => setSelectedBookId(b.id)}
               style={{
                 background: 'var(--paper2)',
                 borderRadius: 12,
@@ -115,11 +116,8 @@ export const QuotesPage: React.FC = () => {
         <FicharioModal
           book={selectedBook}
           isOpen={true}
-          onClose={() => setSelectedBook(null)}
-          onSaveBook={async (updated) => {
-            await saveBook(updated);
-            setSelectedBook(updated);
-          }}
+          onClose={() => setSelectedBookId(null)}
+          onSaveBook={saveBook}
         />
       )}
     </div>

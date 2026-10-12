@@ -21,18 +21,27 @@ const book: Book = {
   resenha: '',
 };
 
-function setup(saveBook = vi.fn().mockResolvedValue(undefined)) {
-  mockedUseLibrary.mockReturnValue({
-    books: [book],
-    diary: [],
-    loading: false,
-    summary: { hoje: 0, streak: 0, totalLido: 20, totalRegistros: 1, entries: [], week: [] },
-    saveBook,
-    saveBatch: vi.fn(),
-    removeBook: vi.fn(),
-    exportBackup: vi.fn(),
-    refreshData: vi.fn(),
-  } as ReturnType<typeof useLibrary>);
+function setup() {
+  // Simula o contrato real: saveBook persiste e a lista de books é
+  // atualizada — os modais derivam o livro da lista mais recente
+  const lib = { books: [book] };
+  const saveBook = vi.fn().mockImplementation(async (updated: Book) => {
+    lib.books = lib.books.map((b) => (b.id === updated.id ? updated : b));
+  });
+  mockedUseLibrary.mockImplementation(
+    () =>
+      ({
+        books: lib.books,
+        diary: [],
+        loading: false,
+        summary: { hoje: 0, streak: 0, totalLido: 20, totalRegistros: 1, entries: [], week: [] },
+        saveBook,
+        saveBatch: vi.fn(),
+        removeBook: vi.fn(),
+        exportBackup: vi.fn(),
+        refreshData: vi.fn(),
+      }) as ReturnType<typeof useLibrary>
+  );
   return { saveBook };
 }
 
@@ -53,7 +62,7 @@ async function openNotebook() {
 describe('Diário — fluxo de resenha (MVP 1)', () => {
   it('volta à contracapa após salvar e só volta ao diário ao fechar', async () => {
     const { saveBook } = setup();
-    render(<DiaryPage />);
+    const { rerender } = render(<DiaryPage />);
 
     const textArea = await openNotebook();
     // A capa encaixa acima da folha do caderno, como no MVP 1
@@ -70,6 +79,8 @@ describe('Diário — fluxo de resenha (MVP 1)', () => {
       // Volta para a contracapa, não para o diário
       expect(document.querySelector('#flipview')).toBeInTheDocument();
     });
+    // Simula o refreshData da useLibrary que o saveBook dispara no app
+    act(() => rerender(<DiaryPage />));
     expect(document.querySelector('#flipview .rv')).toHaveTextContent('Uma resenha.');
 
     // Só o "Fechar" da contracapa volta ao diário
