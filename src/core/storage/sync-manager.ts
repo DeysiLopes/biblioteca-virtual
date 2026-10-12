@@ -17,6 +17,7 @@ import { authService } from '../auth/google-auth';
 import { driveService } from './drive';
 import { syncChannel } from '../broadcast/channel';
 import { migrateLegacySyncData } from './migration';
+import { showToast } from '../business/share';
 
 let syncTimer: any = null;
 
@@ -160,9 +161,24 @@ export class LibrarySyncManager {
    * sem interface registrada, vai direto para o merge.
    */
   private async syncAfterLogin(): Promise<void> {
-    if (this.inMemoryBooks.length > 0 && this.firstSyncPrompt) {
+    const uid = authService.getAuthState().user?.id ?? 'anon';
+    const askedKey = `bib_sync_asked_${uid}`;
+    const alreadyAsked = (() => {
+      try {
+        return localStorage.getItem(askedKey) === '1';
+      } catch {
+        return false;
+      }
+    })();
+
+    // A pergunta só aparece uma vez por usuário por aparelho — depois disso
+    // todo login vai direto para o merge (deduplicado)
+    if (this.inMemoryBooks.length > 0 && this.firstSyncPrompt && !alreadyAsked) {
       try {
         const choice = await this.firstSyncPrompt(this.inMemoryBooks.length);
+        try {
+          localStorage.setItem(askedKey, '1');
+        } catch {}
         if (choice === 'wipe') {
           await this.resetLocalData();
         }
@@ -170,7 +186,7 @@ export class LibrarySyncManager {
         console.warn('Prompt de sincronização falhou — mesclando:', e);
       }
     }
-    await this.pullFromDriveQuietly();
+    await this.pullFromDriveQuietly({ notify: true });
   }
 
   /**
@@ -194,7 +210,7 @@ export class LibrarySyncManager {
     return [...this.inMemoryDiary];
   }
 
-  public async pullFromDriveQuietly(): Promise<void> {
+  public async pullFromDriveQuietly(opts: { notify?: boolean } = {}): Promise<void> {
     const auth = authService.getAuthState();
     if (!auth.isAuthenticated || !auth.user) return;
 
@@ -254,9 +270,17 @@ export class LibrarySyncManager {
         });
 
         // Diário por união de IDs (+ remapeamento dos livros deduplicados)
+        // Aceita array ou dicionário {id: entry}; ausente vira [] em vez de
+        // quebrar o merge inteiro
+        const driveDiary: DiaryEntry[] = Array.isArray(driveData.diary)
+          ? driveData.diary
+          : Object.entries((driveData as any).diary || {}).map(
+              ([id, d]) => ({ id, ...(d as object) }) as DiaryEntry
+            );
+
         const diaryMap = new Map<string, DiaryEntry>();
         this.inMemoryDiary.forEach(d => diaryMap.set(d.id, d));
-        driveData.diary.forEach(d => {
+        driveDiary.forEach(d => {
           const local = diaryMap.get(d.id);
           if (!local || (d.ts || 0) >= (local.ts || 0)) {
             diaryMap.set(d.id, d);
@@ -281,11 +305,18 @@ export class LibrarySyncManager {
 
         syncChannel.broadcast({ type: 'LIBRARY_UPDATED', timestamp: Date.now() });
       } else {
-        // Primeiro login do usuário: sobe o conteúdo local inicial para o Drive
-        await this.schedulePushToDrive(true);
+        // Arquivo ainda não existe no Drive: sobe o conteúdo local inicial.
+        // Só quando há algo a compartilhar — nunca sobrescreve remoto com
+        // biblioteca vazia (ex.: logo após uma limpeza local)
+        if (this.inMemoryBooks.length > 0 || this.inMemoryDiary.length > 0) {
+          await this.schedulePushToDrive(true);
+        }
       }
     } catch (err) {
       console.warn('Erro ao sincronizar com Google Drive:', err);
+      if (opts.notify) {
+        showToast('Não consegui baixar a biblioteca do Drive — verifica a conexão ou conecta de novo.');
+      }
     } finally {
       this.isSyncing = false;
     }

@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
     try {
       await syncManager.resetLocalData();
       if (isAuthenticated) {
-        await syncManager.pullFromDriveQuietly();
+        await syncManager.pullFromDriveQuietly({ notify: true });
         showToast('Dados locais limpos — biblioteca baixada do Drive ✨');
       } else {
         showToast('Dados locais apagados.');
