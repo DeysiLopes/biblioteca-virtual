@@ -1,8 +1,9 @@
 :root{
-    --paper:#201812; --paper2:#2b221a; --ink:#efdfc8; --ink2:#c0ac93;
-    --wood:#917157; --wood2:#2f1e10; --accent:#e09a5b; --green:#4c9a6a;
-    --panel:oklch(0.92 0.03 60 / .06); --panel2:oklch(0.9 0.03 60 / .12);
-    --line:oklch(0.75 0.03 60 / .15);
+    --paper:#251a20; --paper2:#2f2329; --ink:#f0e2cf; --ink2:#c6b1a0;
+    --wood:#8f6e52; --wood2:#331d13; --accent:#dca457; --green:#4c9a6a;
+    --gold:#e3c88f; --wine:#7c3143;
+    --panel:oklch(0.92 0.03 330 / .06); --panel2:oklch(0.9 0.03 330 / .12);
+    --line:oklch(0.75 0.04 40 / .16);
     --shadow:0 18px 40px -18px oklch(0 0 0 / .75);
     --ease:cubic-bezier(.22,1,.36,1);
   }
@@ -11,9 +12,10 @@
   body{
     font-family:"Nunito",system-ui,sans-serif; color:var(--ink);
     background:
-      radial-gradient(1100px 520px at 50% -10%, oklch(0.34 0.07 330 / .42), transparent 62%),
-      radial-gradient(900px 620px at 100% 100%, oklch(0.32 0.06 50 / .45), transparent 55%),
-      linear-gradient(180deg, #17100f, #241a17 48%, #1b1722);
+      radial-gradient(1100px 520px at 50% -10%, oklch(0.4 0.1 325 / .5), transparent 62%),
+      radial-gradient(760px 480px at 8% 18%, oklch(0.44 0.11 55 / .26), transparent 60%),
+      radial-gradient(900px 620px at 100% 100%, oklch(0.32 0.08 300 / .5), transparent 55%),
+      linear-gradient(180deg, #150d15, #211420 48%, #170f1d);
     background-attachment:fixed;
     min-height:100dvh;
     -webkit-tap-highlight-color:transparent;
@@ -24,8 +26,8 @@
     position:sticky; top:0; z-index:40;
     display:flex; align-items:center; gap:12px;
     padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top));
-    background:linear-gradient(180deg, oklch(0.32 0.06 320 / .96), oklch(0.22 0.05 40 / .97));
-    color:#f0e2cc; box-shadow:0 6px 24px -12px oklch(0 0 0 / .6);
+    background:linear-gradient(180deg, oklch(0.34 0.09 335 / .97), oklch(0.22 0.06 325 / .98));
+    color:#f2e4cd; box-shadow:0 6px 24px -12px oklch(0 0 0 / .6), inset 0 -1px 0 oklch(0.78 0.08 75 / .22);
   }
   header .logo{
     width:40px;height:40px;border-radius:10px;object-fit:cover;
@@ -47,15 +49,17 @@
   nav.tabs{
     display:flex; gap:6px; padding:12px 18px 0;
   }
-  nav.tabs button{
+  nav.tabs button, nav.tabs a{
     flex:1; font:800 15px "Nunito",sans-serif; padding:12px; border:none; cursor:pointer;
     border-radius:14px 14px 0 0; background:oklch(1 0 0 / .05); color:var(--ink2);
     transition:.2s; display:flex; align-items:center; justify-content:center; gap:8px;
+    text-decoration:none;
   }
-  nav.tabs button.active{
-    background:var(--paper2); color:var(--ink); box-shadow:0 -6px 18px -14px oklch(0 0 0 / .5);
+  nav.tabs button.active, nav.tabs a.active{
+    background:var(--paper2); color:var(--ink); box-shadow:0 -6px 18px -14px oklch(0 0 0 / .5),
+      inset 0 2px 0 oklch(0.78 0.09 75 / .55);
   }
-  nav.tabs button svg{width:18px;height:18px;}
+  nav.tabs button svg, nav.tabs a svg{width:18px;height:18px;}
 
   main{padding:16px 18px 90px; max-width:1200px; margin:0 auto;}
 
@@ -86,17 +90,18 @@
   .shelf-wood{
     position:relative; padding:16px 14px 0; border-radius:14px 14px 6px 6px;
     background:
-      radial-gradient(120% 85% at 50% -30%, oklch(0.42 0.06 55 / .45), transparent 62%),
-      linear-gradient(180deg, #261810, #1a1009);
+      radial-gradient(120% 85% at 50% -30%, oklch(0.45 0.08 340 / .5), transparent 62%),
+      radial-gradient(60% 30% at 50% 100%, oklch(0.5 0.12 60 / .22), transparent 70%),
+      linear-gradient(180deg, #26141c, #180d12);
     box-shadow:inset 0 14px 28px -20px oklch(0 0 0 / .95), 0 8px 26px -18px oklch(0 0 0 / .8);
   }
   .shelf-wood::before{
     content:""; position:absolute; inset:12px auto 12px 8px; width:6px; border-radius:3px;
-    background:linear-gradient(180deg, #7a5b41, #4a331f); box-shadow:0 0 8px oklch(0 0 0 / .4);
+    background:linear-gradient(180deg, #8a6748, #4c3020); box-shadow:0 0 8px oklch(0 0 0 / .4);
   }
   .shelf-wood::after{
     content:""; position:absolute; inset:12px 8px 12px auto; width:6px; border-radius:3px;
-    background:linear-gradient(180deg, #7a5b41, #4a331f); box-shadow:0 0 8px oklch(0 0 0 / .4);
+    background:linear-gradient(180deg, #8a6748, #4c3020); box-shadow:0 0 8px oklch(0 0 0 / .4);
   }
   .books{ display:flex; align-items:flex-end; gap:4px; min-height:162px; padding:6px 6px 15px; position:relative; z-index:2; }
   .book-card{
@@ -116,10 +121,25 @@
   .book-card img{ width:100%; height:100%; object-fit:cover; position:relative; z-index:1; border-radius:inherit; }
   .fallback{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
-    font-family:"Cormorant Garamond",serif; font-weight:700; font-size:13.5px; letter-spacing:.3px;
-    color:oklch(0.16 0.04 30 / .9); text-shadow:0 1px 0 oklch(1 0 0 / .3);
+    font-family:"Cormorant Garamond",serif; font-weight:700; font-size:15px; letter-spacing:2px;
+    color:var(--gold); text-shadow:0 1px 3px oklch(0 0 0 / .65);
     background:linear-gradient(150deg, var(--g1), var(--g2));
   }
+  /* filetes dourados de encadernação nas lombadas da estante */
+  .book-card .fallback{
+    box-shadow:
+      inset 0 0 0 1px oklch(0.78 0.09 80 / .3),
+      inset 5px 0 10px -5px oklch(0 0 0 / .55),
+      inset -2px 0 6px -4px oklch(0 0 0 / .4);
+  }
+  .book-card .fallback::before,
+  .book-card .fallback::after{
+    content:""; position:absolute; left:7px; right:7px; height:2px;
+    border-top:1px solid oklch(0.8 0.09 80 / .5);
+    border-bottom:1px solid oklch(0.8 0.09 80 / .5);
+  }
+  .book-card .fallback::before{ top:11px; }
+  .book-card .fallback::after{ bottom:11px; }
   .book-card.lean{ transform:rotate(7deg) translateX(-7px); z-index:3; }
   .book-card.leanl{ transform:rotate(-6deg); z-index:3; }
   .book-card.lean .cover-wrap,.book-card.leanl .cover-wrap{ box-shadow:0 16px 26px -12px oklch(0 0 0 / .8), inset 4px 0 8px -4px oklch(0 0 0 / .45); }
@@ -136,10 +156,10 @@
     background:linear-gradient(180deg,#2e4a6b,#1c1a2b); }
   .rail{
     position:relative; height:20px; margin-top:-2px; border-radius:5px 5px 14px 14px;
-    background:linear-gradient(180deg, #d9b987 0%, #a88e70 24%, #674b32 58%, #3a2413 100%);
-    box-shadow:inset 0 2px 3px oklch(1 0 0 / .28), 0 14px 26px -12px oklch(0 0 0 / .75);
+    background:linear-gradient(180deg, #e6c08c 0%, #a9835c 24%, #63432a 58%, #382011 100%);
+    box-shadow:inset 0 2px 3px oklch(1 0 0 / .3), 0 14px 26px -12px oklch(0 0 0 / .75);
   }
-  .rail::before{ content:""; position:absolute; inset:0 9px; border-top:1px solid oklch(1 0 0 / .22); }
+  .rail::before{ content:""; position:absolute; inset:0 9px; border-top:1px solid oklch(0.85 0.1 80 / .4); }
   @media(max-width:900px){ .books{ min-height:138px; } .deco{ width:56px; height:106px; } }
   @media(max-width:560px){ .books{ min-height:122px; gap:3px; } .deco{ display:none; } }
 
@@ -177,7 +197,7 @@
   .field label{ display:block; font:700 11.5px "Nunito",sans-serif; letter-spacing:.6px; text-transform:uppercase; color:var(--ink2); margin-bottom:6px; }
   .stars{ display:flex; gap:6px; }
   .stars span{ cursor:pointer; font-size:26px; line-height:1; color:oklch(0.3 0 0 / .18); transition:transform .15s, color .15s; }
-  .stars span.on{ color:#e8a33d; transform:scale(1.12); }
+  .stars span.on{ color:#dfa94f; transform:scale(1.12); }
   input[type=number],input[type=date],select,textarea{
     width:100%; font:600 14px "Nunito",sans-serif; color:var(--ink);
     background:oklch(0 0 0 / .24); border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; outline:none;
@@ -219,7 +239,7 @@
   .mbox{ display:flex; gap:10px; align-items:flex-start; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:8px; cursor:pointer; }
   .mbox:hover{ border-color:var(--accent); }
   .mbox img,.mbox .fbmini{ width:40px; height:58px; border-radius:3px 7px 7px 3px; object-fit:cover; flex:none; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
-  .mbox .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:oklch(0.2 0 0 / .85); background:linear-gradient(150deg,var(--g1),var(--g2)); }
+  .mbox .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:var(--gold); text-shadow:0 1px 2px oklch(0 0 0 / .6); background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .mbox .bd{ flex:1; }
   .mbox .bt{ font:700 13.5px; }
   .mbox .bp{ font-size:12px; color:var(--ink2); }
@@ -228,7 +248,7 @@
   .nbook{ display:flex; gap:10px; align-items:flex-start; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:8px; cursor:pointer; }
   .nbook:hover{ border-color:var(--accent); }
   .nbook img,.nbook .fbmini{ width:40px; height:58px; border-radius:3px 7px 7px 3px; object-fit:cover; flex:none; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
-  .nbook .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:oklch(0.2 0 0 / .85); background:linear-gradient(150deg,var(--g1),var(--g2)); }
+  .nbook .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:var(--gold); text-shadow:0 1px 2px oklch(0 0 0 / .6); background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .coverbtn{ background:none; border:none; padding:0; margin:0; flex:none; cursor:pointer; display:block; line-height:0; }
   .nbook .cwrap{ position:relative; display:block; width:40px; height:58px; flex:none; border-radius:3px 7px 7px 3px; overflow:hidden; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
   /* a capa do cartão precisa ser o bloco de contenção do .fallback (absolute) */
@@ -249,7 +269,7 @@
 
   #toast{
     position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(20px);
-    background:#3b2d1e; color:#f6ebd9; padding:11px 18px; border-radius:12px; font:700 13px "Nunito",sans-serif;
+    background:#3a2230; color:#f4e6d2; padding:11px 18px; border-radius:12px; font:700 13px "Nunito",sans-serif;
     opacity:0; transition:.3s var(--ease); z-index:100; pointer-events:none; box-shadow:var(--shadow);
   }
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
@@ -397,7 +417,7 @@
   .flip-face{ position:absolute; inset:0; backface-visibility:hidden; border-radius:4px 12px 12px 4px; overflow:hidden; box-shadow:0 34px 70px -26px oklch(0 0 0/.85); }
   .flip-face.front{ background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .flip-face img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .flip-face .fallback{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; font:800 34px "Cormorant Garamond",serif; color:oklch(0.2 0 0 /.85); background:linear-gradient(150deg,var(--g1),var(--g2)); }
+  .flip-face .fallback{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; font:800 34px "Cormorant Garamond",serif; color:var(--gold); text-shadow:0 1px 3px oklch(0 0 0 / .6); background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .flip-face.back{ transform:rotateY(180deg); background:linear-gradient(150deg,#2c221a,#3a2d21); color:var(--ink); padding:20px 18px 16px; display:flex; flex-direction:column; }
   .flip-face.back .blab{ font:700 11px "Nunito",sans-serif; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
   .flip-face.back .rv{ flex:1; overflow-y:auto; font:600 13px/1.55 "Nunito",sans-serif; white-space:pre-wrap; }

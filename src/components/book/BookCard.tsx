@@ -16,15 +16,25 @@ export function hashHue(s: string): number {
   return h;
 }
 
+// Lombadas de couro inspiradas nas referências visuais (vinho, ameixa,
+// floresta, conhaque) — determinística pelo título do livro
+const SPINE_PALETTES: [string, string][] = [
+  ['#7c3143', '#4e1a27'], // vinho
+  ['#4d3a6b', '#2e2046'], // ameixa
+  ['#2f4d3d', '#1b3127'], // verde floresta
+  ['#2e4160', '#1c2a44'], // azul noite
+  ['#704e29', '#483017'], // conhaque
+  ['#5f2f52', '#3c1d33'], // berinjela
+  ['#234e52', '#153336'], // petróleo
+  ['#7f3f30', '#54271c'], // ferrugem
+];
+
 export function getBookFallback(title: string) {
   const h = hashHue(title);
   const words = normalizeString(title).split(' ').filter(Boolean).slice(0, 2);
   const initials = words.map(w => w[0] || '').join('').toUpperCase() || (title && title[0] ? title[0].toUpperCase() : '?');
-  return {
-    g1: `oklch(${0.72 + (h % 40) / 100} 0.09 ${h})`,
-    g2: `oklch(${0.5 + (h % 25) / 100} 0.12 ${(h + 45) % 360})`,
-    initials,
-  };
+  const [g1, g2] = SPINE_PALETTES[h % SPINE_PALETTES.length];
+  return { g1, g2, initials };
 }
 
 export function getBookCover(book: Book): string {
