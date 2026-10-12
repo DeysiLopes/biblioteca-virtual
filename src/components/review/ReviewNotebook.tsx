@@ -14,7 +14,7 @@ interface ReviewNotebookProps {
   book: Book;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (bookId: string, reviewText: string) => Promise<void>;
+  onSave: (bookId: string, reviewText: string, spoilers: boolean) => Promise<void>;
   coverOrigin?: CoverOrigin | null;
 }
 
@@ -26,6 +26,7 @@ export const ReviewNotebook: React.FC<ReviewNotebookProps> = ({
   coverOrigin,
 }) => {
   const [reviewText, setReviewText] = useState(book?.resenha || '');
+  const [spoilers, setSpoilers] = useState(!!book?.resenhaSpoilers);
   const [saving, setSaving] = useState(false);
   const [docked, setDocked] = useState(false);
   const coverRef = useRef<HTMLDivElement>(null);
@@ -35,6 +36,7 @@ export const ReviewNotebook: React.FC<ReviewNotebookProps> = ({
   useEffect(() => {
     if (book) {
       setReviewText(book.resenha || '');
+      setSpoilers(!!book.resenhaSpoilers);
     }
   }, [book]);
 
@@ -78,7 +80,7 @@ export const ReviewNotebook: React.FC<ReviewNotebookProps> = ({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(book.id, reviewText);
+      await onSave(book.id, reviewText, spoilers);
       onClose();
     } catch (err) {
       console.error('Erro ao salvar resenha:', err);
@@ -168,6 +170,25 @@ export const ReviewNotebook: React.FC<ReviewNotebookProps> = ({
               }}
             >
               Som: {soundEnabled ? 'ligado' : 'desligado'}
+            </button>
+            <button
+              id="cadSpoilers"
+              type="button"
+              aria-pressed={spoilers}
+              title="Marque se a resenha revela partes da história"
+              onClick={() => setSpoilers((v) => !v)}
+              style={{
+                background: spoilers ? '#8a4a2b' : '#e8dcc4',
+                color: spoilers ? '#ffe8c8' : '#725c3f',
+                border: `1px solid ${spoilers ? '#8a4a2b' : '#c8b797'}`,
+                borderRadius: 8,
+                padding: '6px 12px',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {spoilers ? '⚠️ Com spoilers' : 'Sem spoilers'}
             </button>
             <button
               id="cadCancel"

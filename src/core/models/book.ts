@@ -29,6 +29,7 @@ export interface Book {
   nota?: number;
   comentarios?: string;
   resenha?: string;
+  resenhaSpoilers?: boolean;
   cover?: string;
   codigo_isbn?: string | null;
   readingEpoch?: number;

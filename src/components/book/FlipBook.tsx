@@ -17,6 +17,7 @@ export const FlipBook: React.FC<FlipBookProps> = ({
 }) => {
   const [flipped, setFlipped] = useState(false);
   const [ready, setReady] = useState(false);
+  const [revealSpoilers, setRevealSpoilers] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Blindagem: CSS velho, falha de carregamento ou extensão de navegador não pode
@@ -256,10 +257,50 @@ export const FlipBook: React.FC<FlipBookProps> = ({
               </p>
             )}
 
-            <div className={`rv ${resenha ? '' : 'empty'}`}>
+            {resenha && (
+              <span
+                className="spoiler-tag"
+                style={{
+                  display: 'inline-block',
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  letterSpacing: '.04em',
+                  padding: '3px 9px',
+                  borderRadius: 999,
+                  marginBottom: 6,
+                  background: book.resenhaSpoilers ? 'oklch(0.68 0.16 45 / .2)' : 'oklch(0.6 0.12 150 / .18)',
+                  color: book.resenhaSpoilers ? '#f4b860' : '#8fd4a8',
+                  border: `1px solid ${book.resenhaSpoilers ? 'oklch(0.68 0.16 45 / .45)' : 'oklch(0.6 0.12 150 / .35)'}`,
+                }}
+              >
+                {book.resenhaSpoilers ? '⚠️ contém spoilers' : '✓ sem spoilers'}
+              </span>
+            )}
+            <div
+              className={`rv ${resenha ? '' : 'empty'}`}
+              style={
+                book.resenhaSpoilers && resenha && !revealSpoilers
+                  ? { filter: 'blur(5px)', userSelect: 'none' }
+                  : undefined
+              }
+            >
               {resenha || 'Sem resenha ainda — toque para escrever no caderno.'}
             </div>
-            <div className="hint">toque para escrever no caderno ✍️</div>
+            {book.resenhaSpoilers && resenha && !revealSpoilers ? (
+              <button
+                type="button"
+                className="hint"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRevealSpoilers(true);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                spoilers — tocar para revelar 👁
+              </button>
+            ) : (
+              <div className="hint">toque para escrever no caderno ✍️</div>
+            )}
 
             <button
               className="edit-review mbtn primary"

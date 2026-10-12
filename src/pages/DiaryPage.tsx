@@ -54,12 +54,13 @@ export const DiaryPage: React.FC = () => {
   };
 
   // Salva a resenha e retorna à contracapa (estado anterior), como no MVP 1
-  const handleSaveReview = async (bookId: string, reviewText: string) => {
+  const handleSaveReview = async (bookId: string, reviewText: string, spoilers: boolean) => {
     const base = books.find((b) => b.id === bookId) ?? notebookBook;
     if (base) {
       const updated: Book = {
         ...base,
         resenha: reviewText,
+        resenhaSpoilers: spoilers,
         updatedAt: Date.now(),
       };
       await saveBook(updated);

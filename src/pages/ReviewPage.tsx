@@ -11,11 +11,12 @@ export const ReviewPage: React.FC = () => {
 
   const book = books.find((b) => b.id === livroId);
 
-  const handleSaveReview = async (id: string, reviewText: string) => {
+  const handleSaveReview = async (id: string, reviewText: string, spoilers: boolean) => {
     if (!book) return;
     const updated: Book = {
       ...book,
       resenha: reviewText,
+      resenhaSpoilers: spoilers,
       updatedAt: Date.now(),
     };
     await saveBook(updated);

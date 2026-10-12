@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Book, BookStatus } from '../../core/models/book';
 import { calculatePercentage, applyBookProgressUpdate } from '../../core/business/progress';
 import { getBookFallback } from './BookCard';
+import { shareBook, showToast } from '../../core/business/share';
 
 interface BookModalProps {
   book: Book;
@@ -77,6 +78,12 @@ export const BookModal: React.FC<BookModalProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleShare = async () => {
+    const result = await shareBook(book);
+    if (result === 'copied') showToast('Resumo do livro copiado! Cole onde quiser ✨');
+    else if (result === 'failed') showToast('Não foi possível compartilhar agora.');
   };
 
   return (
@@ -252,6 +259,14 @@ export const BookModal: React.FC<BookModalProps> = ({
 
         {/* Ações */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+          <button
+            className="mbtn"
+            onClick={handleShare}
+            title="Compartilhar dados, resenha e citações deste livro"
+            style={{ marginRight: 'auto', padding: '8px 14px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--accent)', border: '1px solid var(--line)', fontWeight: 700, cursor: 'pointer' }}
+          >
+            📤 Compartilhar
+          </button>
           <button
             className="mbtn"
             onClick={onClose}
