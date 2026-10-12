@@ -47,6 +47,8 @@ Na aba Estante, livros com status “Lido” devem ficar em uma seção de prate
 
 Problema relatado: a resenha apagada foi atualizada, mas a exclusão de uma citação não foi refletida corretamente no fichário do app. Verificar tanto a exclusão local quanto a sincronização, especialmente ao apagar a última citação.
 
+Atualização do relato: a sincronização geral entre web e mobile acabou concluindo após um atraso, mas as exclusões ainda parecem se perder no sync. Não confundir a demora de propagação com a falha de preservar exclusões. A investigação e a correção ficaram para a próxima sessão, amanhã.
+
 Ponto observado no código: `pickOV` ignora arrays vazios. Assim, `citacoes: []` é descartado na montagem do payload e na aplicação de dados remotos. Já `buildSyncPayload` inclui um valor padrão para `resenha`, mas não para uma lista de citações explicitamente vazia. Essa diferença é uma hipótese a validar com reprodução isolada, não uma confirmação completa da causa do problema relatado.
 
 - [ ] Reproduzir a exclusão da última citação e a exclusão de uma entre várias, verificando o momento em que a interface deixa de atualizar ou o item reaparece.
