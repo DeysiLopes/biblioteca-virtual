@@ -4,6 +4,7 @@
 /node_modules/
 /dist/
 index.vanilla.html
+.idea
 
 # Variáveis de ambiente (credenciais locais — NÃO commitar)
 .env
