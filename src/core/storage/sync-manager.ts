@@ -19,6 +19,21 @@ import { migrateLegacySyncData } from './migration';
 
 let syncTimer: any = null;
 
+/**
+ * Mescla local → remoto: o remoto (mais novo) vence, mas campos que ele
+ * simplesmente não tem (registro parcial/legado) herdam do local.
+ * Campo presente e vazio no remoto é respeitado — pode ser intencional.
+ */
+function mergeBookFields(local: Book, remote: Book): Book {
+  const merged = { ...remote };
+  (Object.keys(local) as (keyof Book)[]).forEach((k) => {
+    if (merged[k] === undefined && local[k] !== undefined) {
+      (merged as any)[k] = local[k];
+    }
+  });
+  return merged;
+}
+
 export class LibrarySyncManager {
   private inMemoryBooks: Book[] = [];
   private inMemoryDiary: DiaryEntry[] = [];
@@ -29,6 +44,14 @@ export class LibrarySyncManager {
     // 1. Carrega do IndexedDB
     let localBooks = await getAllBooks();
     let localDiary = await getAllDiary();
+
+    // Purga registros-fantasma sem título (legados de versões antigas que
+    // liam o sync.json — lá os livros só têm estado de leitura)
+    const ghosts = localBooks.filter((b) => !b.title?.trim());
+    if (ghosts.length) {
+      localBooks = localBooks.filter((b) => b.title?.trim());
+      await Promise.all(ghosts.map((g) => idbDeleteBook(g.id)));
+    }
 
     // Se estiver totalmente vazio, tenta carregar semente de books.json / data/sync.json
     if (localBooks.length === 0) {
@@ -115,14 +138,23 @@ export class LibrarySyncManager {
       this.isSyncing = true;
       const driveData = await driveService.downloadLibrary(auth.user.id);
       if (driveData) {
-        // Merge baseado no updatedAt de cada livro
+        // Merge baseado no updatedAt de cada livro — ignora registros
+        // fantasma sem título vindos de arquivos legados
         const mergedBooksMap = new Map<string, Book>();
         this.inMemoryBooks.forEach(b => mergedBooksMap.set(b.id, b));
 
-        driveData.books.forEach(dbBook => {
+        // books pode vir como array ou como dicionário {id: livro} (legado)
+        const driveBooks: Book[] = Array.isArray(driveData.books)
+          ? driveData.books
+          : Object.entries((driveData as any).books || {}).map(
+              ([id, b]) => ({ id, ...(b as object) }) as Book
+            );
+
+        driveBooks.forEach(dbBook => {
+          if (!dbBook?.id || !dbBook.title?.trim()) return;
           const local = mergedBooksMap.get(dbBook.id);
           if (!local || (dbBook.updatedAt || 0) >= (local.updatedAt || 0)) {
-            mergedBooksMap.set(dbBook.id, dbBook);
+            mergedBooksMap.set(dbBook.id, local ? mergeBookFields(local, dbBook) : dbBook);
           }
         });
 
@@ -216,7 +248,7 @@ export class LibrarySyncManager {
         const payload: UserLibraryData = {
           version: 1,
           updatedAt: Date.now(),
-          books: this.inMemoryBooks,
+          books: this.inMemoryBooks.filter((b) => b.title?.trim()),
           diary: this.inMemoryDiary,
           meta: {
             lastSyncAt: Date.now(),
