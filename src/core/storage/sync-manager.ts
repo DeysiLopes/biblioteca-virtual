@@ -11,6 +11,7 @@ import {
   putDiaryBatch,
   persistBookAndDiaryAtomic,
   deleteBook as idbDeleteBook,
+  clearStore,
 } from './idb';
 import { authService } from '../auth/google-auth';
 import { driveService } from './drive';
@@ -34,6 +35,29 @@ function mergeBookFields(local: Book, remote: Book): Book {
   return merged;
 }
 
+const normKey = (s?: string | null) =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+
+
+/**
+ * Identidades estáveis do livro para deduplicar o merge: ISBN (quando
+ * existir) E título+autor normalizados — ambos indexados, porque um lado
+ * pode ter ISBN e o outro não. O mesmo livro pode ter IDs diferentes em
+ * cada aparelho (importações geram IDs novos).
+ */
+function bookKeys(b: Book): string[] {
+  const keys: string[] = [];
+  const isbn = normKey(b.codigo_isbn).replace(/[^0-9x]/g, '');
+  if (isbn) keys.push(`isbn:${isbn}`);
+  const t = normKey(b.title);
+  if (t) keys.push(`ta:${t}|${normKey(b.author)}`);
+  return keys;
+}
+
 export class LibrarySyncManager {
   private inMemoryBooks: Book[] = [];
   private inMemoryDiary: DiaryEntry[] = [];
@@ -54,7 +78,9 @@ export class LibrarySyncManager {
     }
 
     // Se estiver totalmente vazio, tenta carregar semente de books.json / data/sync.json
-    if (localBooks.length === 0) {
+    // (pulada quando o usuário limpou os dados locais de propósito)
+    const wiped = await getMetaValue<boolean>('localWiped');
+    if (localBooks.length === 0 && !wiped) {
       try {
         const [booksRes, syncRes] = await Promise.allSettled([
           fetch('./books.json'),
@@ -116,10 +142,48 @@ export class LibrarySyncManager {
       const uid = state.isAuthenticated ? state.user?.id ?? null : null;
       if (uid && uid !== this.lastSyncedUserId) {
         this.lastSyncedUserId = uid;
-        this.pullFromDriveQuietly();
+        void this.syncAfterLogin();
       }
       if (!uid) this.lastSyncedUserId = null;
     });
+  }
+
+  /** Registrado pela interface: decide se limpa o local antes do 1º sync. */
+  private firstSyncPrompt: ((localCount: number) => Promise<'wipe' | 'merge'>) | null = null;
+  public setFirstSyncPrompt(fn: typeof this.firstSyncPrompt): void {
+    this.firstSyncPrompt = fn;
+  }
+
+  /**
+   * Ao logar com livros locais, pergunta se a pessoa quer limpar tudo e
+   * baixar só o Drive ou mesclar (sem duplicar). Sem livros locais, ou
+   * sem interface registrada, vai direto para o merge.
+   */
+  private async syncAfterLogin(): Promise<void> {
+    if (this.inMemoryBooks.length > 0 && this.firstSyncPrompt) {
+      try {
+        const choice = await this.firstSyncPrompt(this.inMemoryBooks.length);
+        if (choice === 'wipe') {
+          await this.resetLocalData();
+        }
+      } catch (e) {
+        console.warn('Prompt de sincronização falhou — mesclando:', e);
+      }
+    }
+    await this.pullFromDriveQuietly();
+  }
+
+  /**
+   * Apaga todos os dados locais (livros, diário, meta). Não toca na sessão
+   * (sessionStorage) — se a pessoa estiver logada, pode baixar do Drive em
+   * seguida. A flag 'localWiped' impede que a semente legada volte.
+   */
+  public async resetLocalData(): Promise<void> {
+    this.inMemoryBooks = [];
+    this.inMemoryDiary = [];
+    await Promise.all([clearStore('books'), clearStore('diary'), clearStore('meta')]);
+    await setMetaValue('localWiped', true);
+    syncChannel.broadcast({ type: 'LIBRARY_UPDATED', timestamp: Date.now() });
   }
 
   public getBooks(): Book[] {
@@ -143,6 +207,17 @@ export class LibrarySyncManager {
         const mergedBooksMap = new Map<string, Book>();
         this.inMemoryBooks.forEach(b => mergedBooksMap.set(b.id, b));
 
+        // Índice por identidade (ISBN ou título+autor): o mesmo livro pode
+        // existir local e no Drive com IDs diferentes — sem isso duplica
+        const keyToLocalId = new Map<string, string>();
+        this.inMemoryBooks.forEach((b) => {
+          bookKeys(b).forEach((k) => {
+            if (!keyToLocalId.has(k)) keyToLocalId.set(k, b.id);
+          });
+        });
+        const diaryIdRemap = new Map<string, string>();
+        const droppedLocalIds: string[] = [];
+
         // books pode vir como array ou como dicionário {id: livro} (legado)
         const driveBooks: Book[] = Array.isArray(driveData.books)
           ? driveData.books
@@ -152,13 +227,33 @@ export class LibrarySyncManager {
 
         driveBooks.forEach(dbBook => {
           if (!dbBook?.id || !dbBook.title?.trim()) return;
-          const local = mergedBooksMap.get(dbBook.id);
-          if (!local || (dbBook.updatedAt || 0) >= (local.updatedAt || 0)) {
-            mergedBooksMap.set(dbBook.id, local ? mergeBookFields(local, dbBook) : dbBook);
+          let local = mergedBooksMap.get(dbBook.id);
+          if (!local) {
+            const altId = bookKeys(dbBook)
+              .map((k) => keyToLocalId.get(k))
+              .find((id) => id && id !== dbBook.id);
+            if (altId && altId !== dbBook.id) {
+              local = mergedBooksMap.get(altId);
+              if (local) {
+                // O ID do Drive é canônico entre os aparelhos: o registro
+                // local sai e o diário que apontava para ele é remapeado
+                mergedBooksMap.delete(altId);
+                droppedLocalIds.push(altId);
+                diaryIdRemap.set(altId, dbBook.id);
+              }
+            }
+          }
+          if (!local) {
+            mergedBooksMap.set(dbBook.id, dbBook);
+          } else if ((dbBook.updatedAt || 0) >= (local.updatedAt || 0)) {
+            mergedBooksMap.set(dbBook.id, mergeBookFields(local, dbBook));
+          } else {
+            // Local mais novo vence, mas fica com o ID do Drive
+            mergedBooksMap.set(dbBook.id, { ...mergeBookFields(dbBook, local), id: dbBook.id });
           }
         });
 
-        // Diário por união de IDs
+        // Diário por união de IDs (+ remapeamento dos livros deduplicados)
         const diaryMap = new Map<string, DiaryEntry>();
         this.inMemoryDiary.forEach(d => diaryMap.set(d.id, d));
         driveData.diary.forEach(d => {
@@ -169,12 +264,19 @@ export class LibrarySyncManager {
         });
 
         this.inMemoryBooks = Array.from(mergedBooksMap.values());
-        this.inMemoryDiary = Array.from(diaryMap.values()).sort(
-          (a, b) => (b.date === a.date ? String(b.id).localeCompare(String(a.id)) : b.date < a.date ? -1 : 1)
-        );
+        this.inMemoryDiary = Array.from(diaryMap.values())
+          .map((d) =>
+            diaryIdRemap.has(d.bookId)
+              ? { ...d, bookId: diaryIdRemap.get(d.bookId)! }
+              : d
+          )
+          .sort(
+            (a, b) => (b.date === a.date ? String(b.id).localeCompare(String(a.id)) : b.date < a.date ? -1 : 1)
+          );
 
         await putBooksBatch(this.inMemoryBooks);
         await putDiaryBatch(this.inMemoryDiary);
+        await Promise.all(droppedLocalIds.map((id) => idbDeleteBook(id)));
         await setMetaValue('lastSyncAt', Date.now());
 
         syncChannel.broadcast({ type: 'LIBRARY_UPDATED', timestamp: Date.now() });

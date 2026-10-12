@@ -128,6 +128,16 @@ export async function persistBookAndDiaryAtomic(book: Book, diaryEntry?: DiaryEn
   });
 }
 
+export async function clearStore(name: 'books' | 'diary' | 'meta'): Promise<void> {
+  const db = await getIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(name, 'readwrite');
+    const req = tx.objectStore(name).clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 export async function getMetaValue<T>(key: string): Promise<T | null> {
   const db = await getIDB();
   return new Promise((resolve, reject) => {

@@ -4,6 +4,7 @@ import { Header } from './components/common/Header';
 import { Tabs } from './components/common/Tabs';
 import { AuthBanner } from './components/common/AuthBanner';
 import { MagicBackdrop } from './components/common/MagicBackdrop';
+import { SyncPrompt } from './components/common/SyncPrompt';
 import { DashboardPage } from './pages/DashboardPage';
 import { ShelfPage } from './pages/ShelfPage';
 import { AddBookPage } from './pages/AddBookPage';
@@ -16,6 +17,7 @@ export const App: React.FC = () => {
   return (
     <div className="app-container">
       <MagicBackdrop />
+      <SyncPrompt />
       <Header />
       <AuthBanner />
       <Tabs />

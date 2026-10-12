@@ -1,10 +1,34 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLibrary } from '../../hooks/useLibrary';
+import { syncManager } from '../../core/storage/sync-manager';
+import { showToast } from '../../core/business/share';
 
 export const Header: React.FC = () => {
   const { isAuthenticated, user, login, logout, isMock } = useAuth();
   const { exportBackup } = useLibrary();
+
+  const handleWipeLocal = async () => {
+    const ok = window.confirm(
+      'Apagar TODOS os livros, histórico e dados salvos NESTE aparelho?\n\n' +
+        (isAuthenticated
+          ? 'Como você está conectada, a biblioteca será baixada do Google Drive em seguida.'
+          : 'Você NÃO está conectada ao Drive — os dados serão perdidos de vez.\n\nIsso não pode ser desfeito.')
+    );
+    if (!ok) return;
+    try {
+      await syncManager.resetLocalData();
+      if (isAuthenticated) {
+        await syncManager.pullFromDriveQuietly();
+        showToast('Dados locais limpos — biblioteca baixada do Drive ✨');
+      } else {
+        showToast('Dados locais apagados.');
+      }
+    } catch (e) {
+      console.error('Falha ao limpar dados locais:', e);
+      showToast('Não foi possível limpar os dados.');
+    }
+  };
 
   const handleReminder = async () => {
     if (!('Notification' in window)) {
@@ -45,6 +69,18 @@ export const Header: React.FC = () => {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           <span>Lembrete</span>
+        </button>
+
+        <button
+          className="hbtn ghost"
+          onClick={handleWipeLocal}
+          title="Apagar todos os dados locais deste aparelho"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+          <span>Limpar</span>
         </button>
 
         {isAuthenticated ? (
