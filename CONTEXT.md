@@ -414,6 +414,15 @@ Roadmap completo em `todo.md`. Itens prioritários:
 - O `sw.js` atual está com `VERSION = "bib-v24"` mas o commit `67b765b` (v25) não bumped
   o SW; considerar alinhar na próxima alteração.
 
+### Atualização da migração React (2026-10-12)
+
+- O fluxo Diário → capa 3D → caderno de resenha agora fecha o caderno e a capa 3D após
+  salvar, retornando ao estado inicial do Diário.
+- A capa 3D recebeu dimensões compatíveis (`width`/`height` com fallback para `vh`) para
+  não expandir até ocupar a página em navegadores que não interpretam `dvh` dentro de `min()`.
+- O fluxo possui teste de regressão em `src/test/diary-review.test.tsx`; a suíte atual passa
+  com 23 testes.
+
 ---
 
 ## 15. MVP 2 — Migração React + Vite + TypeScript (WEB-000)
@@ -449,4 +458,3 @@ Em 2026-10-12, a aplicação foi migrada de SPA vanilla para **React 18 + Vite +
 
 6. **Testes Automatizados**:
    - 22 testes unitários e de integração em **Vitest + React Testing Library** (`npm run test`) cobrindo progresso, regras de readingEpoch, streak do dashboard, fichário, parser CSV/JSON e componentes React.
-
