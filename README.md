@@ -1,47 +1,68 @@
-# Biblioteca Virtual
+# Minha Biblioteca
 
-App PWA da estante de livros: estante interativa com capas, diário de leitura, notas/resenhas e CSV — funciona offline como app no celular/tablet.
+PWA de estante + diário de leitura — **React 18 + Vite + TypeScript**, sincronização opcional via **Google Drive** e funcionamento **offline** completo.
+
+**Site:** https://deysilopes.github.io/biblioteca-virtual/
 
 ## Instalar como app (celular / tablet)
 
-1. Abra **https://deysilopes.github.io/biblioteca-virtual/** no navegador.
-2. **Android (Chrome):** no menu ⋮ → **"Adicionar à tela inicial"** (ou "Instalar app").
+1. Abra https://deysilopes.github.io/biblioteca-virtual/ no navegador.
+2. **Android (Chrome):** menu ⋮ → **"Adicionar à tela inicial"** / "Instalar app".
 3. **iPhone/iPad (Safari):** botão **Compartilhar** → **"Adicionar à tela inicial"**.
-4. Depois é só abrir pelos ícone na tela inicial — roda em tela cheia e offline.
-5. Toque no 🔔 para ativar o **lembrete diário de leitura** (permite na hora).
+4. O app abre em tela cheia com o ícone do fantasminha e funciona offline.
+5. Toque em **Lembrete** no topo para ativar o aviso diário de leitura (20:00).
 
 ## O que o app faz
 
-- 📚 **Estante**: capas em prateleiras, filtros por status/gênero, clique = livro "voa" da estante.
-- ⭐ **Nota / Comentários / Resenha**: editáveis no próprio app (ficam salvas no aparelho, por isso funciona offline).
-- 📖 **Diário**: registre páginas lidas por dia + anotação; o app soma o progresso do livro, mostra páginas lidas hoje e sequência de dias.
-- ⬇️ **Backup**: exporta seus dados para um arquivo JSON.
-- ⇪ **CSV**: importa seus CSVs do Goodreads/MyReelReads direto no app (mesmo mapeamento de colunas e dedupe por título do script de importação do Notion).
-- 🔔 **Lembrete**: avisa diariamente (20:00) para você registrar a leitura.
+- **Estante**: livros em prateleiras com capas reais ou lombadas de couro estilizadas, gato preto animado na prateleira (ele tenta derrubar o último livro quando você rola a página), fundo mágico com lua crescente, estrelas e poeira encantada.
+- **Filtros e busca**: por status (Todos / Quero ler / Lendo / Lido / Abandonado), gênero (dropdown) e título/autor. Livros lidos ficam nas prateleiras do fim.
+- **Modal do livro**: progresso, status, gênero, formato, idioma, datas, nota, comentários e ISBN num só lugar. **Páginas lidas é o total** — digitar 100 salva 100, sem somar.
+- **Resenha**: fluxo capa → contracapa (flip 3D) → folha de caderno pautado com som opcional de escrita. Resenha marcada **"com spoilers"** fica borrada até tocar para revelar.
+- **Fichário de citações** (`/fichario`): abas pastel, página obrigatória, leitura centralizada; exclusões propagam corretamente entre aparelhos.
+- **Compartilhar**: botão no modal do livro gera um texto com progresso, resenha e citações — abre a folha de compartilhamento no celular ou copia no desktop.
+- **Adicionar** (`/books`): três formas — **ISBN (Open Library)**, **manual** e **import em lote (CSV/JSON)**. A varredura "✨ Capas & ISBN" completa capa, ISBN, autor e páginas dos livros já cadastrados, com tolerância a rate limit da API.
+- **Diário** (`/diario`): registros por dia, páginas lidas hoje e sequência; o histórico nunca recalcula o progresso do livro.
+- **Backup**: baixa o próprio arquivo JSON do Drive.
 
-## Como os dados se conectam com o Notion
+## Sincronização e dados
 
-- O **catálogo** (títulos, autores, capas, gênero, status) vem de `books.json`, gerado a partir do banco **Leituras** do Notion por `gerar-books.js`.
-- **Edições feitas no app** (nota, resenha, comentários, páginas lidas, status, diário) ficam **no aparelho** (IndexedDB) — são mantidas mesmo quando o catálogo é atualizado.
-- Para sincronizar: jogue um `.csv` em `~/TBR/` no computador (vai pro Notion e republica o widget) ou rode `biblioteca-atualizar`.
+- **Google Drive = fonte da verdade**: `biblioteca-<userId>.json` na pasta "Minha Biblioteca", via Drive REST API v3 + Google Identity Services (escopo `drive.file`).
+- **IndexedDB local**: funciona 100% offline; memória/IndexedDB/Drive são estados separados e as abas se sincronizam por BroadcastChannel.
+- **Primeiro login** em cada aparelho pergunta: **mesclar** dados locais com o Drive ou **limpar e baixar** só a nuvem. A resposta é lembrada por usuário/aparelho.
+- **Merge sem duplicar**: livros casam por ISBN e título+autor normalizados; `updatedAt` decide campo a campo; sessões do diário são remapeadas para o ID canônico.
+- **Limpar** (botão no topo): apaga os dados locais — estando conectada, baixa do Drive na sequência.
+- Sem login? O app funciona em **modo leitura local** — nada é perdido.
+
+## Desenvolver
+
+```bash
+npm install
+npm run dev        # Vite dev server (localhost:5173/biblioteca-virtual/)
+npm test           # Vitest + React Testing Library + fake-indexeddb
+npm run build      # tsc + build + service worker (vite-plugin-pwa)
+npm run preview    # serve o dist/ localmente
+```
 
 ## Publicar
 
 ```bash
-cd ~/workspace/biblioteca-virtual
 git push origin main
 ```
 
-O workflow `.github/workflows/react-vite.yml` instala as dependências, executa os
-testes, gera o `dist/` e publica no GitHub Pages depois de um push aprovado em
-`main`. Pull requests apenas validam o app. Nas configurações do repositório,
-GitHub Pages deve usar **GitHub Actions** como fonte de build/deploy.
+O workflow `.github/workflows/react-vite.yml` roda testes, builda o `dist/` e publica no GitHub Pages (fonte do Pages = **GitHub Actions**). O build usa o secret `VITE_GOOGLE_CLIENT_ID` para habilitar o login Google no site publicado.
 
-## Arquivos
+## Estrutura
 
-- `index.html` — entrada do Vite
-- `src/` — app React, regras de negócio, storage e testes
-- `public/` — ícones e fallback do GitHub Pages
-- `vite.config.ts` — base `/biblioteca-virtual/` e PWA
-- `.github/workflows/react-vite.yml` — CI/CD de teste, build e publicação
-- `.agents/artifacts/mvp1-fonte-verdade/` — runtime vanilla legado do MVP 1
+- `src/pages/` — Estante, Diário, Adicionar, Fichário, Resenha
+- `src/components/` — modal do livro, flipbook, caderno de resenha, gato da estante, fundo mágico, header, fichário
+- `src/core/` — `models/` (Book, diário, UserLibraryData), `business/` (progresso, citações, CSV, Open Library, share), `storage/` (IndexedDB, Drive, sync-manager), `auth/` (GIS), `broadcast/` (abas)
+- `src/hooks/` — `useLibrary`, `useAuth`, `useSound`
+- `src/test/` — suíte Vitest/RTL
+- `public/` — ícones PWA, favicon e `404.html` (redirect SPA no GitHub Pages)
+- `identidade-visual/` — referências visuais (somente local)
+- `vite.config.ts` — base `/biblioteca-virtual/`, manifest e workbox do PWA
+- `AGENTS.md` / `CONTEXT.md` — orientações e histórico de decisões
+
+## Privacidade
+
+Nenhum dado de leitura é versionado: `data/`, `books.json` e fotos pessoais são locais e cobertos pelo `.gitignore`. O histórico do repositório foi purgado de dados pessoais.
