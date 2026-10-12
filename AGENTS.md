@@ -1,15 +1,69 @@
-# Orientações do projeto
+# Orientações do projeto — Minha Biblioteca
 
-- Leia `CONTEXT.md` para arquitetura, sincronização e histórico. Interface e comunicação em pt-BR.
-- O aplicativo usa HTML/CSS/JavaScript vanilla inline em `index.html`, sem build ou dependências de testes.
-- Incremente `VERSION` em `sw.js` quando modificar o aplicativo, para atualizar o cache do PWA.
-- Verificação da resenha: `node scripts/test-resenha.cjs`. Requer Node e `chromium` no PATH. Valida a sintaxe do JS inline e testa a interface com Chromium headless em viewport ampla e compacta, incluindo movimento reduzido. Usa armazenamento em memória e sincronização desativada para não alterar IndexedDB ou dados reais do GitHub. Perfis temporários são removidos ao final.
-- Verificação do modal e progresso compartilhado: `node scripts/test-leitura.cjs`, usando o mesmo executor isolado de navegador em `scripts/browser-test.cjs`.
-- O modal geral é único para Estante e Diário. `Páginas lidas` informa o total já lido: digitar 100 salva exatamente 100, sem somar ao valor anterior. `books.paginasLidas` é a única fonte do progresso; `saveBook` grava o valor e `persistReading` usa uma transação do IndexedDB. Aumentos podem gerar registros históricos da diferença, mas o histórico nunca recalcula o progresso.
-- Não há formulário separado do Diário (`dform`) nem lista editável de sessões no cartão. Registrar leitura, clicar no cartão do Diário ou na Estante abre `openBook`/`renderPanel`; o campo vem preenchido com o total salvo.
-- Registros antigos, inclusive testes, são preservados sem acrescentar páginas automaticamente ao carregar ou sincronizar. A correção de um total errado deve ser feita explicitamente no modal; não editar `data/sync.json` diretamente.
-- Verificação do fichário: `node scripts/test-citacoes.cjs`. Cada citação é uma aba lateral; `ficharioState` guarda a aba e o modo de edição. O editor usa o mesmo fichário centralizado, com página obrigatória. Editar preserva o ID e o timestamp de criação para não duplicar nem reordenar abas; cancelar não salva e excluir exige confirmação.
-- Referência do fichário: `identidade-visual/citacoes-design.jpg`, com folhas pastel, argolas à esquerda e abas arredondadas à direita.
-- Verificação do dashboard: `node scripts/test-dashboard.cjs`. `dashboardEntries` é compartilhado por Hoje, sequência, registros e gráfico semanal; limita as contribuições ao progresso atual de cada livro. Livro zerado não contribui. `readingEpoch` marca reinícios e é sincronizado no livro e nas novas sessões, para registros antigos não voltarem ao dashboard após recomeçar. O histórico bruto é preservado.
-- As citações ficam centralizadas na folha do fichário e no modo Ler página; trechos longos usam rolagem sem cortar o início.
-- Verificações complementares: `node --check sw.js` e `git diff --check`.
+## Base atual e escopo
+
+- Interface, comunicação e documentação do projeto em pt-BR.
+- A aplicação atual é o MVP 2: React 18, TypeScript, Vite e React Router. O código do app está em `src/`; `index.html` é a entrada do Vite, não a antiga aplicação com JS inline.
+- Leia a seção de migração React/MVP 2 e as atualizações recentes de `CONTEXT.md`. As seções do MVP vanilla são histórico; em caso de divergência, confira o código e a configuração atuais antes de agir.
+- Consulte `todo.md` para pendências e `todo-isbn.md` para o estudo da integração por ISBN. A busca básica por ISBN já existe em `/books`; não confundir essa implementação com a conclusão do estudo ou de todos os critérios do roadmap.
+- Preserve alterações locais da pessoa usuária. Não restaure a SPA vanilla nem implemente mudanças nos arquivos legados como se fossem o runtime atual.
+
+## Organização do código
+
+- `src/main.tsx`: inicialização React, `BrowserRouter` com `import.meta.env.BASE_URL` e registro do PWA em produção.
+- `src/App.tsx`: composição e rotas. `/` e `/estante` abrem a Estante; `/diario` é o Diário; `/dashboard` redireciona para `/diario`; `/books` é o cadastro/importação; `/fichario` contém citações; `/caderno/:livroId` abre a resenha.
+- `src/pages/` e `src/components/`: páginas, componentes e interação visual. Siga as convenções dos componentes existentes antes de criar novos.
+- `src/hooks/useLibrary.ts`, `useAuth.ts` e `useSound.ts`: integração da interface com biblioteca, autenticação e áudio.
+- `src/core/models/`: tipos de livros, entradas do diário e `UserLibraryData`.
+- `src/core/business/`: regras de progresso, dashboard, citações, parser CSV/JSON e consulta Open Library. Mantenha essas regras testáveis, sem duplicá-las nos componentes.
+- `src/core/storage/`: IndexedDB, Google Drive, migração dos dados antigos e `LibrarySyncManager`/`syncManager`.
+- `src/core/auth/google-auth.ts`: Google Identity Services (GIS).
+- `src/core/broadcast/channel.ts`: comunicação entre abas.
+- `src/styles/global.css`: identidade visual e animações. Referências visuais em `identidade-visual/`, incluindo `citacoes-design.jpg`.
+- `src/test/`: testes Vitest/React Testing Library. Configuração em `vitest.config.ts`; `setup.ts` usa jest-dom, fake-indexeddb e mock de BroadcastChannel.
+
+## Estado, persistência e sincronização
+
+- A biblioteca usa memória, IndexedDB (`books`, `diary`, `meta`) e Google Drive. Alterações da interface devem passar por `useLibrary`/`syncManager`, não por cópias independentes de estado ou gravações paralelas improvisadas.
+- Preserve a gravação atômica de livro e entrada do diário em `persistBookAndDiaryAtomic`, quando houver registro de leitura.
+- A nuvem atual é Google Drive REST API v3: arquivo `biblioteca-<userId>.json` na pasta "Minha Biblioteca", com dados no formato `UserLibraryData`. O sync por GitHub Contents API é legado, não o mecanismo a estender na nova arquitetura.
+- `migration.ts` e o carregamento inicial podem aproveitar `books.json`/`data/sync.json` antigos quando disponíveis. Esses arquivos não são a fonte principal de persistência nem devem ser limpos como tentativa de corrigir sincronização.
+- O gerenciador agenda envio ao Drive e publica eventos `LIBRARY_UPDATED`. Entre abas, use o canal `biblioteca-sync` e o fallback de evento `storage`; preserve inscrições e limpeza dos listeners.
+- Ao alterar sync, teste pull, push, concorrência, campos vazios e exclusões entre clientes. A presença de `deletedCitacoes` no modelo não comprova, sozinha, que todas as corridas de merge estão cobertas.
+- O backup atual é JSON, pelo fluxo `exportDriveBackup`, com nome `biblioteca-<userId>.json` ou identificação offline. Não tratá-lo como exportação CSV nem presumir que ele consulta a nuvem no momento do download.
+- GIS usa access token e escopo `drive.file`, sem segredo OAuth ou refresh token no cliente. `VITE_GOOGLE_CLIENT_ID` identifica a aplicação; quando não configurado, o código oferece modo mock, com dados de Drive simulados em armazenamento local.
+- Nunca incluir access tokens, chaves secretas ou segredos OAuth em código, logs, testes, backups ou commits. O client ID público não é um segredo; não serialize `AuthState` dentro de `UserLibraryData`.
+- Não usar dados pessoais reais em código, logs, fixtures de testes ou commits. Backups solicitados pela pessoa usuária podem conter os próprios dados da biblioteca, mas não tokens de autenticação. Respeite o `.gitignore`, que exclui dados pessoais, `.env` locais, `node_modules/`, `dist/` e `bugs/`.
+- Testes devem usar mocks e dados isolados. Não autenticar, criar arquivos, sobrescrever biblioteca real no Drive nem enviar dados de teste à nuvem sem autorização explícita. Testes mock não substituem validação real de login e sync entre aparelhos.
+
+## Regras de negócio e interface a preservar
+
+- `paginasLidas` é o total já lido: digitar 100 salva 100, sem somar. Reutilize `applyBookProgressUpdate` em `src/core/business/progress.ts`; o histórico não recalcula o progresso do livro.
+- Avanços podem gerar uma entrada do diário pela diferença. `readingEpoch` identifica início/reinício/zeramento e deve ser preservado nos livros e nas entradas relacionadas.
+- O dashboard usa `computeDashboardSummary`/`getDashboardEntries`, limita as contribuições ao progresso atual e ignora epochs anteriores. Livro com zero páginas não pontua; reset de um livro não apaga a atividade dos demais.
+- Os livros com status "Lido" ficam nas prateleiras do final da Estante, mas continuam acessíveis. Filtros e busca alteram a visualização, não os dados dos livros.
+- Citações exigem texto e página maior que zero. Use as regras de `quotes.ts`; editar preserva `id` e `ts`, e excluir mantém o ID em `deletedCitacoes`. Não reintroduzir citações apagadas ao sincronizar ou migrar dados.
+- Preserve o modal compartilhado das informações de leitura, o fichário de abas pastel, a leitura centralizada das citações e o caderno pautado de resenha com som opcional.
+- No Diário, salvar ou cancelar o caderno fecha também a capa 3D e retorna ao estado inicial do Diário. A capa deve manter dimensões compatíveis em telas pequenas; não remover fallbacks de tamanho sem validar o comportamento.
+
+## Verificação
+
+Use os scripts reais de `package.json`:
+
+- `npm run dev`: servidor Vite de desenvolvimento.
+- `npm test`: suíte completa (`vitest run`).
+- `npm test -- src/test/diary-review.test.tsx`: regressão do fluxo Diário → capa 3D → caderno → retorno ao Diário.
+- `npm run build`: verificação TypeScript (`tsc`) e build Vite/PWA.
+- `npm run preview`: conferir o build gerado localmente, inclusive rotas e comportamento do PWA quando aplicável.
+- `git diff --check`: verificar problemas de whitespace.
+
+Para mudanças no app, execute os testes relevantes, a suíte completa e o build. Confira interações e telas pequenas quando houver mudanças visuais. Para alterações apenas de documentação, revise os caminhos/comandos e o diff; não é necessário executar deploy.
+
+Os scripts `scripts/test-*.cjs` com Chromium e extração de JS inline pertencem ao MVP vanilla. Não usá-los como prova de que o runtime React atual foi validado, nem depender dos antigos arquivos em `/tmp/opencode`.
+
+## PWA e publicação
+
+- `vite-plugin-pwa` em `vite.config.ts` gera o service worker e o precache no build, com `registerType: 'autoUpdate'`. Não criar/editar um `sw.js` manual nem incrementar o antigo `VERSION = "bib-vN"`.
+- Preserve a base `/biblioteca-virtual/`, o basename do router, `start_url`/`scope` do manifest e o redirecionamento de `public/404.html` para GitHub Pages. Se mudar a base, revise esses pontos juntos.
+- Não editar arquivos gerados em `dist/`; faça mudanças nas fontes e gere outro build. Os ícones e o redirecionamento estáticos ficam em `public/`.
+- `npm run deploy` executa build e publica `dist/` na branch `gh-pages`. Só executar publicação, commit ou push quando solicitado; validar o build antes de publicar.
