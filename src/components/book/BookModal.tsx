@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Book, BookStatus } from '../../core/models/book';
 import { calculatePercentage, applyBookProgressUpdate } from '../../core/business/progress';
-import { getBookFallback } from './BookCard';
+import { getBookFallback, getBookCover, hideTinyCover } from './BookCard';
 import { shareBook, showToast } from '../../core/business/share';
 
 interface BookModalProps {
@@ -11,7 +11,54 @@ interface BookModalProps {
   onClose: () => void;
   onSave: (updatedBook: Book, newDiaryEntry?: any) => Promise<void>;
   onSelectBook: (bookId: string) => void;
+  sourceRect?: DOMRect | null;
 }
+
+interface RectBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+// Posição final da capa "voadora" (mesma matemática do MVP 1):
+// desktop → ao lado esquerdo do painel; mobile → acima da folha inferior.
+function computeFlyTarget(rect: DOMRect | null | undefined): RectBox {
+  const iw = window.innerWidth;
+  const ih = window.innerHeight;
+  const isMobile = iw < 760;
+  const ar = rect && rect.height > 0 ? Math.min(0.78, Math.max(0.5, rect.width / rect.height)) : 0.66;
+  let tw: number, th: number, left: number, top: number;
+  if (isMobile) {
+    const sheetH = Math.min(ih, Math.max(Math.round(ih * 0.62), 380));
+    const sheetTop = ih - sheetH;
+    const availH = Math.max(110, sheetTop - 20);
+    th = Math.min(availH, 430);
+    tw = th * ar;
+    const maxW = iw - 32;
+    if (tw > maxW) {
+      tw = maxW;
+      th = tw / ar;
+    }
+    left = (iw - tw) / 2;
+    top = Math.max(8, (sheetTop - th) / 2);
+  } else {
+    const panelW = Math.min(560, iw);
+    const availW = Math.max(120, iw - panelW - 48);
+    th = Math.min(Math.round(ih * 0.82), 640, ih - 40);
+    tw = th * ar;
+    if (tw > availW) {
+      tw = availW;
+      th = tw / ar;
+    }
+    left = Math.max(18, (iw - panelW - tw) / 2);
+    top = (ih - th) / 2;
+  }
+  return { left, top, width: tw, height: th };
+}
+
+const toRectBox = (r: DOMRect | null | undefined, fallback: RectBox): RectBox =>
+  r && r.width > 0 ? { left: r.left, top: r.top, width: r.width, height: r.height } : fallback;
 
 export const BookModal: React.FC<BookModalProps> = ({
   book,
@@ -20,6 +67,7 @@ export const BookModal: React.FC<BookModalProps> = ({
   onClose,
   onSave,
   onSelectBook,
+  sourceRect,
 }) => {
   const [paginasLidas, setPaginasLidas] = useState<number>(book.paginasLidas || 0);
   const [totalPaginas, setTotalPaginas] = useState<number>(book.paginas || 0);
@@ -28,7 +76,11 @@ export const BookModal: React.FC<BookModalProps> = ({
   const [inicio, setInicio] = useState<string>(book.inicio || '');
   const [fim, setFim] = useState<string>(book.fim || '');
   const [comentarios, setComentarios] = useState<string>(book.comentarios || '');
+  const [nota, setNota] = useState<number>(book.nota || 0);
   const [saving, setSaving] = useState(false);
+  const [landed, setLanded] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (book) {
@@ -39,23 +91,51 @@ export const BookModal: React.FC<BookModalProps> = ({
       setInicio(book.inicio || '');
       setFim(book.fim || '');
       setComentarios(book.comentarios || '');
+      setNota(book.nota || 0);
     }
   }, [book]);
+
+  // Trava o scroll da página e faz a capa "pousar" após o primeiro paint
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setLanded(true)));
+    return () => {
+      cancelAnimationFrame(raf);
+      document.body.style.overflow = '';
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    closeTimer.current = setTimeout(onClose, sourceRect ? 540 : 200);
+  };
+  const handleCloseRef = useRef(handleClose);
+  handleCloseRef.current = handleClose;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        handleCloseRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen || !book) return null;
 
+  const target = computeFlyTarget(sourceRect);
+  const flyPos = closing
+    ? toRectBox(sourceRect, target)
+    : landed
+      ? target
+      : toRectBox(sourceRect, target);
+
   const perc = calculatePercentage(paginasLidas, totalPaginas);
   const fb = getBookFallback(book.title);
+  const coverUrl = getBookCover(book);
 
   const handleSave = async () => {
     setSaving(true);
@@ -70,8 +150,9 @@ export const BookModal: React.FC<BookModalProps> = ({
         fim || null,
         comentarios
       );
+      updatedBook.nota = nota;
       await onSave(updatedBook, newDiaryEntry);
-      onClose();
+      handleClose();
     } catch (err) {
       console.error('Erro ao salvar livro:', err);
       alert('Erro ao salvar o livro.');
@@ -94,10 +175,37 @@ export const BookModal: React.FC<BookModalProps> = ({
       aria-modal="true"
       aria-labelledby="panelTitle"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="panel" id="panel">
+      {/* Capa que "voa" da estante até o lado do painel (MVP 1) */}
+      <div
+        className="fly-cover"
+        aria-hidden="true"
+        style={{
+          left: flyPos.left,
+          top: flyPos.top,
+          width: flyPos.width,
+          height: flyPos.height,
+          transition: landed || closing ? undefined : 'none',
+        }}
+      >
+        {coverUrl && (
+          <img src={coverUrl} alt={book.title} onLoad={hideTinyCover} onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />
+        )}
+        <div
+          className="fallback"
+          style={{
+            ['--g1' as string]: fb.g1,
+            ['--g2' as string]: fb.g2,
+            ...(coverUrl ? { zIndex: -1 } : {}),
+          }}
+        >
+          {fb.initials}
+        </div>
+      </div>
+
+      <div className="panel" id="panel" style={closing ? { opacity: 0, transition: 'none' } : undefined}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <h2 id="panelTitle" className="serif" style={{ fontSize: 26, margin: 0, color: 'var(--ink)' }}>
@@ -111,7 +219,7 @@ export const BookModal: React.FC<BookModalProps> = ({
           </div>
           <button
             className="hbtn ghost"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Fechar modal"
             style={{ padding: '6px 10px', fontSize: 16 }}
           >
@@ -245,6 +353,24 @@ export const BookModal: React.FC<BookModalProps> = ({
           </div>
         </div>
 
+        {/* Nota em estrelas */}
+        <div className="field" style={{ marginTop: 12 }}>
+          <label>Sua nota:</label>
+          <div className="stars" role="radiogroup" aria-label="Nota de 0 a 5 estrelas">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <span
+                key={i}
+                role="radio"
+                aria-checked={nota === i}
+                className={i <= nota ? 'on' : ''}
+                onClick={() => setNota(i === nota ? 0 : i)}
+              >
+                ★
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* Comentários */}
         <div className="field" style={{ marginTop: 12 }}>
           <label htmlFor="bComent">Anotações / Comentários:</label>
@@ -269,7 +395,7 @@ export const BookModal: React.FC<BookModalProps> = ({
           </button>
           <button
             className="mbtn"
-            onClick={onClose}
+            onClick={handleClose}
             style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--paper2)', color: 'var(--ink)', border: '1px solid var(--line)', cursor: 'pointer' }}
           >
             Fechar

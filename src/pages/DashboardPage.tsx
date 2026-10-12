@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 export const DashboardPage: React.FC = () => {
   const { books, summary, saveBook } = useLibrary();
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [modalRect, setModalRect] = useState<DOMRect | null>(null);
 
   const currentlyReading = books.filter((b) => b.status === 'Lendo');
 
@@ -53,7 +54,10 @@ export const DashboardPage: React.FC = () => {
             {currentlyReading.map((b) => (
               <div
                 key={b.id}
-                onClick={() => setSelectedBook(b)}
+                onClick={(e) => {
+                  setModalRect(e.currentTarget.getBoundingClientRect());
+                  setSelectedBook(b);
+                }}
                 style={{
                   background: 'var(--paper2)',
                   borderRadius: 12,
@@ -94,6 +98,7 @@ export const DashboardPage: React.FC = () => {
           book={selectedBook}
           allBooks={books}
           isOpen={true}
+          sourceRect={modalRect}
           onClose={() => setSelectedBook(null)}
           onSave={saveBook}
           onSelectBook={(id) => {

@@ -58,6 +58,69 @@ describe('Componentes React da Biblioteca', () => {
     expect(handleSave).toHaveBeenCalledTimes(1);
   });
 
+  it('BookModal renderiza 5 estrelas e persiste a nota ao salvar', async () => {
+    const handleSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <BookModal
+        book={sampleBook}
+        allBooks={[sampleBook]}
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={handleSave}
+        onSelectBook={vi.fn()}
+      />
+    );
+
+    const stars = screen.getAllByRole('radio');
+    expect(stars).toHaveLength(5);
+
+    fireEvent.click(stars[3]); // 4ª estrela
+    expect(stars[0]).toHaveClass('on');
+    expect(stars[3]).toHaveClass('on');
+    expect(stars[4]).not.toHaveClass('on');
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Salvar/i }));
+    });
+
+    expect(handleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'b1', nota: 4 }),
+      undefined
+    );
+  });
+
+  it('BookModal mostra capa do livro e fallback com iniciais', () => {
+    const comCapa: Book = { ...sampleBook, cover: 'https://example.com/capa.jpg' };
+    const { container, unmount } = render(
+      <BookModal
+        book={comCapa}
+        allBooks={[comCapa]}
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        onSelectBook={vi.fn()}
+      />
+    );
+    const img = container.querySelector('.fly-cover img') as HTMLImageElement;
+    expect(img).toBeInTheDocument();
+    expect(img.src).toBe('https://example.com/capa.jpg');
+    unmount();
+
+    const { container: sem } = render(
+      <BookModal
+        book={sampleBook}
+        allBooks={[sampleBook]}
+        isOpen={true}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        onSelectBook={vi.fn()}
+      />
+    );
+    expect(sem.querySelector('.fly-cover img')).not.toBeInTheDocument();
+    expect(sem.querySelector('.fly-cover .fallback')).toHaveTextContent('ES');
+  });
+
   it('StatsSummary exibe 4 métricas corretamente', () => {
     const summary = {
       hoje: 42,

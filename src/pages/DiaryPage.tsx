@@ -15,6 +15,7 @@ export const DiaryPage: React.FC = () => {
   // Guardamos só os IDs — os modais derivam o livro da lista atual,
   // então enxergam edições e mudanças do sync sem precisar reabrir
   const [modalBookId, setModalBookId] = useState<string | null>(null);
+  const [modalRect, setModalRect] = useState<DOMRect | null>(null);
   const [flipBookId, setFlipBookId] = useState<string | null>(null);
   const [notebookBook, setNotebookBook] = useState<Book | null>(null);
   const [coverOrigin, setCoverOrigin] = useState<CoverOrigin | null>(null);
@@ -127,7 +128,10 @@ export const DiaryPage: React.FC = () => {
               key={b.id}
               book={b}
               onOpenCover={(book) => setFlipBookId(book.id)}
-              onOpenModal={(book) => setModalBookId(book.id)}
+              onOpenModal={(book, rect) => {
+                setModalRect(rect ?? null);
+                setModalBookId(book.id);
+              }}
               onOpenQuotes={(book) => setQuotesBookId(book.id)}
             />
           ))
@@ -144,6 +148,7 @@ export const DiaryPage: React.FC = () => {
           book={modalBook}
           allBooks={books}
           isOpen={true}
+          sourceRect={modalRect}
           onClose={() => setModalBookId(null)}
           onSave={saveBook}
           onSelectBook={(id) => setModalBookId(id)}

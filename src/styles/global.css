@@ -341,7 +341,8 @@
   .field{margin:12px 0;}
   .field label{ display:block; font:700 11.5px "Nunito",sans-serif; letter-spacing:.6px; text-transform:uppercase; color:var(--ink2); margin-bottom:6px; }
   .stars{ display:flex; gap:6px; }
-  .stars span{ cursor:pointer; font-size:26px; line-height:1; color:oklch(0.3 0 0 / .18); transition:transform .15s, color .15s; }
+  .stars span{ cursor:pointer; font-size:26px; line-height:1; color:oklch(0.72 0.05 80 / .28); transition:transform .15s, color .15s; }
+  .stars span:hover{ color:#dfa94f; }
   .stars span.on{ color:#dfa94f; transform:scale(1.12); }
   input[type=number],input[type=date],select,textarea{
     width:100%; font:600 14px "Nunito",sans-serif; color:var(--ink);

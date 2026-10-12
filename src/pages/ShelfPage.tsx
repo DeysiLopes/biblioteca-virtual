@@ -36,6 +36,7 @@ export const ShelfPage: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeBook, setActiveBook] = useState<Book | null>(null);
+  const [modalRect, setModalRect] = useState<DOMRect | null>(null);
 
   // Gêneros únicos disponíveis
   const genres = useMemo(() => {
@@ -186,7 +187,13 @@ export const ShelfPage: React.FC = () => {
                             key={b.id}
                             book={b}
                             modeIndex={mi + ri * 3}
-                            onClick={() => setActiveBook(b)}
+                            onClick={(e) => {
+                              const rect = (e.currentTarget as HTMLElement)
+                                .querySelector('.cover-wrap')
+                                ?.getBoundingClientRect();
+                              setModalRect(rect ?? null);
+                              setActiveBook(b);
+                            }}
                           />
                         ))}
                         <div className="deco">
@@ -214,6 +221,7 @@ export const ShelfPage: React.FC = () => {
           book={activeBook}
           allBooks={books}
           isOpen={true}
+          sourceRect={modalRect}
           onClose={() => setActiveBook(null)}
           onSave={saveBook}
           onSelectBook={(id) => {

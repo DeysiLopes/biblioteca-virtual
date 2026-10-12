@@ -6,7 +6,7 @@ import { calculatePercentage } from '../../core/business/progress';
 interface DiaryCardProps {
   book: Book;
   onOpenCover: (book: Book) => void;
-  onOpenModal: (book: Book) => void;
+  onOpenModal: (book: Book, rect?: DOMRect | null) => void;
   onOpenQuotes: (book: Book) => void;
 }
 
@@ -106,7 +106,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       {/* Conteúdo do cartão */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
-          onClick={() => onOpenModal(book)}
+          onClick={(e) => {
+            const cover = (e.currentTarget as HTMLElement)
+              .closest('.nbook')
+              ?.querySelector('.coverbtn')
+              ?.getBoundingClientRect();
+            onOpenModal(book, cover ?? e.currentTarget.getBoundingClientRect());
+          }}
           style={{ cursor: 'pointer' }}
           role="button"
           tabIndex={0}
