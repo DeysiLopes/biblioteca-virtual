@@ -79,9 +79,11 @@ export class LibrarySyncManager {
     }
 
     // Se estiver totalmente vazio, tenta carregar semente de books.json / data/sync.json
-    // (pulada quando o usuário limpou os dados locais de propósito)
+    // (pulada quando o usuário limpou os dados locais de propósito).
+    // Os arquivos legados só existem em dev — em produção são gitignored e
+    // cada visitante novo receberia 404s de graça no console.
     const wiped = await getMetaValue<boolean>('localWiped');
-    if (localBooks.length === 0 && !wiped) {
+    if (localBooks.length === 0 && !wiped && import.meta.env.DEV) {
       try {
         const [booksRes, syncRes] = await Promise.allSettled([
           fetch('./books.json'),
