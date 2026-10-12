@@ -78,7 +78,12 @@
 
   main{padding:16px 18px 90px; max-width:1200px; margin:0 auto;}
 
-  .filters{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 4px;}
+  .filters{display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; margin:6px 0 4px;}
+  .status-filters{display:flex; flex-wrap:wrap; gap:8px; flex:1 0 100%;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; width:min(100%,240px); font:700 11.5px "Nunito",sans-serif; color:var(--ink2);}
+  .filter-search{flex:1; min-width:180px;}
+  .filter-field select,.filter-field input{width:100%; color-scheme:dark; font:600 14px "Nunito",sans-serif; color:var(--ink); background:oklch(0 0 0/.24); border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; outline:none;}
+  .filter-field input:focus{border-color:var(--accent);}
   .pill{
     border:1px solid var(--line); background:var(--panel); color:var(--ink2);
     border-radius:999px; padding:6px 12px; font:600 12px/1 "Nunito",sans-serif; cursor:pointer; transition:.15s;
@@ -88,6 +93,10 @@
 
   .statsRow{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px; font-size:12.5px; color:var(--ink2);}
   .statsRow b{color:var(--ink);}
+  .shelf-section + .shelf-section{margin-top:36px;}
+  .shelf-section h2{display:flex; align-items:center; justify-content:space-between; gap:12px; font:700 24px "Cormorant Garamond",serif; color:var(--ink); margin:22px 8px 0;}
+  .shelf-section h2 span{font:700 11px "Nunito",sans-serif; color:var(--ink2);}
+  .shelf-section .shelf{margin-top:20px;}
 
   /* estante — aconchegante: livros inclinados e empilhados, madeira escura */
   .shelf{ margin:30px 0 6px; position:relative; }
@@ -519,7 +528,7 @@
 const $ = (s,r=document)=>r.querySelector(s);
 const STATUS = ["Quero ler","Lendo","Lido","Abandonado"];
 const STATUS_COLOR = {"Quero ler":"#caa370","Lendo":"#6fbf8f","Lido":"#e09a5b","Abandonado":"#b3a28c"};
-const OVERRIDE = ["nota","comentarios","resenha","citacoes","status","tipo","paginas","paginasLidas","readingEpoch","inicio","fim","updatedAt"];
+const OVERRIDE = ["nota","comentarios","resenha","citacoes","deletedCitacoes","status","tipo","paginas","paginasLidas","readingEpoch","inicio","fim","updatedAt"];
 const GIT = { owner:"DeysiLopes", repo:"biblioteca-virtual", path:"data/sync.json", branch:"main" };
 function uid(){ try{ return crypto.randomUUID(); }catch(e){ return "id-"+Date.now()+"-"+Math.random().toString(36).slice(2,10); } }
 
@@ -542,9 +551,9 @@ async function delOf(name,k){ await reqi((await store("readwrite",name)).delete(
 
 /* ---------- estado ---------- */
 let BOOKS=[], DIARY=[], META={}, CATALOG=[];
-let fdStatus="todos", fdGenre="todos", lastTab="shelf", openRect=null, openTarget=null, panelBookId=null;
+let fdStatus="todos", fdGenre="todos", fdSearch="", lastTab="shelf", openRect=null, openTarget=null, panelBookId=null;
 let deferredInstall=null;
-let syncTimer=null, syncState={ busy:false, last:false, error:null };
+let syncTimer=null, syncRevision=0, syncState={ busy:false, last:false, error:null };
 
 function norm(s){ return (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w\s]/g," ").replace(/\s+/g," ").trim(); }
 const slug = t => norm(t).replace(/\s+/g,"-");
@@ -599,14 +608,14 @@ async function loadCatalog(){
 }
 
 function mergeCatalog(catalog, localBooks){
-  const map = new Map(catalog.map(b=>[b.id,b]));
+  const map = new Map(catalog.map(b=>[b.id,Object.assign({},b)]));
   localBooks.forEach(cur=>{
     if(!map.has(cur.id)){
       map.set(cur.id, Object.assign({ id:cur.id, title:cur.title||"Sem título", author:cur.author||"", cover:cur.cover||"", paginas:cur.paginas||0, genero:cur.genero||"", formato:cur.formato||"", idioma:cur.idioma||"", nota:cur.nota||0, status:cur.status||"Quero ler", tipo:cur.tipo||"", paginasLidas:cur.paginasLidas||0 }, cur));
       return;
     }
     const base = map.get(cur.id);
-    for(const k of OVERRIDE) if(cur[k]!==undefined && cur[k]!==null && cur[k]!=="") base[k]=cur[k];
+    Object.assign(base,pickOV(cur));
   });
   return [...map.values()].sort((a,b)=>a.title.localeCompare(b.title,"pt"));
 }
@@ -625,7 +634,8 @@ function syncUi(){
   if(syncState.busy) txt="sincronizando…";
   else if(syncState.error) txt="⚠ "+syncState.error;
   else if(!META.githubToken) txt="Configure o token para compartilhar entre aparelhos.";
-  else txt = META.last ? "✓ sincronizado" + (META.lastSyncAt?" ("+new Date(META.lastSyncAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+")":"") : "Token salvo — toque em “Sincronizar agora”.";
+  else if(syncTimer) txt="Alterações locais aguardando sincronização.";
+  else txt = (syncState.last||META.lastSyncAt) ? "✓ sincronizado" + (META.lastSyncAt?" ("+new Date(META.lastSyncAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+")":"") : "Token salvo — toque em “Sincronizar agora”.";
   st.innerHTML=`<span class="s"></span>${txt}`;
   st.className="syncstat"+(syncState.busy?" load":"" )+(syncState.error?" err":(META.githubToken&&(syncState.last||META.lastSyncAt)?" ok":""));
 }
@@ -662,7 +672,8 @@ async function fetchRawSync(){
 async function apiGetSync(){
   try{
     const j=await ghApi("GET",`https://api.github.com/repos/${GIT.owner}/${GIT.repo}/contents/${GIT.path}?ref=${GIT.branch}`);
-    const payload=JSON.parse(atob(j.content.replace(/\n/g,"")));
+    const bytes=Uint8Array.from(atob(j.content.replace(/\s/g,"")),c=>c.charCodeAt(0));
+    const payload=JSON.parse(new TextDecoder().decode(bytes));
     return {sha:j.sha, payload};
   }catch(e){ if(e.status===404) return {sha:null, payload:{v:1,books:{},diary:[]}}; throw e; }
 }
@@ -680,8 +691,8 @@ function pickOV(ov){
   const out={};
   for(const k of OVERRIDE){
     const v=ov[k];
-    if(v===undefined || v===null || v==="") continue;
-    if(Array.isArray(v) && v.length===0) continue;
+    if(v===undefined) continue;
+    if((v===null||v==="")&&!['comentarios','resenha','tipo','inicio','fim'].includes(k)) continue;
     out[k]=v;
   }
   return out;
@@ -689,17 +700,60 @@ function pickOV(ov){
 function buildSyncPayload(){
   const books={};
   for(const b of BOOKS){
-    const rec=Object.assign({ updatedAt:b.updatedAt||0, status:b.status||"Quero ler", tipo:b.tipo||"", nota:b.nota||0, paginasLidas:b.paginasLidas||0, comentarios:b.comentarios||"", resenha:b.resenha||"", inicio:b.inicio||null, fim:b.fim||null }, pickOV(b));
+    const rec=Object.assign({ updatedAt:b.updatedAt||0, status:b.status||"Quero ler", tipo:b.tipo||"", nota:b.nota||0, paginasLidas:b.paginasLidas||0, comentarios:b.comentarios||"", resenha:b.resenha||"", inicio:b.inicio||null, fim:b.fim||null, citacoes:[], deletedCitacoes:[] }, pickOV(b));
     if(String(b.id).startsWith("imp:")) Object.assign(rec,{ title:b.title||"Sem título", author:b.author||"", paginas:b.paginas||0, genero:b.genero||"", formato:b.formato||"", idioma:b.idioma||"" });
     books[b.id]=rec;
   }
   return { v:1, books, diary: DIARY.map(d=>({ id:String(d.id), bookId:d.bookId, date:d.date, pages:d.pages, note:d.note||"", ts:d.ts||Date.now(), readingEpoch:d.readingEpoch||0 })) };
 }
+function mergeSyncBook(a={},b={}){
+  const newer=(+a.updatedAt||0)>(+b.updatedAt||0)?a:b;
+  const older=newer===a?b:a;
+  const next=Object.assign({},older,newer);
+  const deleted=new Map(),quotes=new Map();
+  let clearedAt=0;
+  for(const source of [a,b]){
+    for(const d of source.deletedCitacoes||[]){
+      if(d?.id==null) continue;
+      const id=String(d.id),previous=deleted.get(id);
+      if(!previous||(+d.ts||0)>=(+previous.ts||0)) deleted.set(id,{id,ts:+d.ts||0});
+    }
+    if(Array.isArray(source.citacoes)&&!source.citacoes.length&&!Object.hasOwn(source,"deletedCitacoes")) clearedAt=Math.max(clearedAt,+source.updatedAt||0);
+    for(const c of source.citacoes||[]){
+      if(c?.id==null) continue;
+      const id=String(c.id),stamp=+c.updatedAt||+c.ts||0,previous=quotes.get(id);
+      if(!previous||stamp>=previous.stamp) quotes.set(id,{quote:c,stamp});
+    }
+  }
+  for(const [id,c] of quotes) if(clearedAt&&c.stamp<=clearedAt) deleted.set(id,{id,ts:Math.max(clearedAt,+(deleted.get(id)?.ts)||0)});
+  next.citacoes=[...quotes.values()].filter(c=>!deleted.has(String(c.quote.id))).map(c=>Object.assign({},c.quote));
+  next.deletedCitacoes=[...deleted.values()];
+  return next;
+}
+function remoteBookState(id,ov,local,cat){
+  const base=Object.assign({id,title:"Sem título",author:"",cover:""},cat||{},local||{});
+  const incoming=Object.assign({},pickOV(ov),{id,updatedAt:+ov.updatedAt||0});
+  if(!cat) for(const key of ["title","author","genero","formato","idioma"]) if(ov[key]!==undefined) incoming[key]=ov[key];
+  return mergeSyncBook(base,incoming);
+}
+async function applyRemoteBook(id,ov,cat){
+  const db=await idb();
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction("books","readwrite"),books=tx.objectStore("books"),request=books.get(id);
+      tx.oncomplete=resolve; tx.onabort=()=>reject(tx.error||new Error("Falha ao aplicar sincronização"));
+      request.onsuccess=()=>{
+        try{ books.put(remoteBookState(id,ov,request.result,cat)); }
+        catch(e){ tx.abort(); reject(e); }
+      };
+    });
+  }finally{ db.close(); }
+}
 function mergePayload(a, b){
   const books={}; Object.assign(books, a.books||{});
   for(const [id, lb] of Object.entries(b.books||{})){
     const rb = (a.books||{})[id];
-    if(!rb || (lb.updatedAt||0) >= (rb.updatedAt||0)) books[id]=lb;
+    books[id]=rb?mergeSyncBook(rb,lb):lb;
   }
   const byId=new Map((a.diary||[]).map(d=>[d.id,d]));
   for(const ld of b.diary||[]){
@@ -710,6 +764,8 @@ function mergePayload(a, b){
 }
 async function pushSync(flush, force){
   if(syncState.busy && !force){ syncUi(); return; }
+  const revision=syncRevision;
+  clearTimeout(syncTimer); syncTimer=null;
   syncState.busy=true; syncUi();
   try{
     let pushed=false;
@@ -749,7 +805,11 @@ async function pushSync(flush, force){
     try{ localStorage.setItem("bib-syncerr", msg); }catch(_){}
     try{ console.error("sync:", e); }catch(_){}
     if(!flush) toast("⚠ "+msg);
-  }finally{ syncState.busy=false; syncUi(); }
+  }finally{
+    syncState.busy=false;
+    if(syncRevision!==revision&&META.githubToken){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>pushSync(),800); }
+    syncUi();
+  }
 }
 async function applyRemote(remote){
   if(!remote) return;
@@ -763,26 +823,9 @@ async function applyRemote(remote){
   const ds=await store("readwrite","diary"); diary.forEach(d=>ds.put(d));
   DIARY=diary;
   // livros: remotos mais novos que o local substituem
-  const localMap=new Map(await allOf("books").then(ls=>ls.map(b=>[b.id,b])));
-  for(const [id, ov] of Object.entries(remote.books||{})){
-    const local=localMap.get(id);
-    if(local && (local.updatedAt||0) > (ov.updatedAt||0)) continue;
-    const base={};
-    const cat=CATALOG.find(c=>c.id===id);
-    if(cat) Object.assign(base, cat);
-    const nb=Object.assign({}, base, pickOV(ov), { id, updatedAt:ov.updatedAt||0 });
-    if(!cat && !local){
-      nb.cover="";
-      nb.title=ov.title||nb.title||"Sem título";
-      nb.author=ov.author||nb.author||"";
-      nb.paginas=ov.paginas||nb.paginas||0;
-      nb.genero=ov.genero||nb.genero||"";
-      nb.formato=ov.formato||nb.formato||"";
-      nb.idioma=ov.idioma||nb.idioma||"";
-    }
-    await putOf("books", nb);
-  }
+  for(const [id, ov] of Object.entries(remote.books||{})) await applyRemoteBook(id,ov,CATALOG.find(c=>c.id===id));
   BOOKS=mergeCatalog(CATALOG, await allOf("books"));
+  if(ficharioState&&!ficharioState.writing&&!$("#leitura").classList.contains("open")) renderFichario(ficharioState.bookId);
 }
 async function pullSync(){
   if(!navigator.onLine) return;
@@ -792,31 +835,39 @@ async function pullSync(){
   if(remote) await applyRemote(remote);
 }
 function syncStatBusy(){ syncState.busy=true; syncUi(); }
-function markDirty(){ syncUi(); if(!META.githubToken) return; clearTimeout(syncTimer); syncUi(); syncTimer=setTimeout(()=>pushSync(),800); }
+function markDirty(){
+  syncRevision++;
+  if(META.githubToken){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>pushSync(),800); }
+  syncUi();
+}
 
 /* ---------- render estante ---------- */
+function genreNames(b){
+  const values=Array.isArray(b.genero)?b.genero:[b.genero];
+  return values.flatMap(g=>String(g||"").split(/[;,|]/)).map(g=>g.trim()).filter(g=>norm(g));
+}
 function visibleBooks(){
+  const query=norm(fdSearch);
   return BOOKS.filter(b=>{
-    if(fdStatus!=="todos" && (b.status||"Sem status")!==fdStatus) return false;
-    if(fdGenre!=="todos" && (b.genero||"")!==fdGenre) return false;
-    return true;
+    if(fdStatus!=="todos"&&(b.status||"Sem status")!==fdStatus) return false;
+    if(fdGenre!=="todos"&&!genreNames(b).some(g=>"g:"+norm(g)===fdGenre)) return false;
+    return !query||norm(`${b.title||""} ${b.author||""}`).includes(query);
   });
 }
 function renderFilters(){
-  const genres=[...new Set(BOOKS.map(b=>b.genero).filter(Boolean))].sort();
+  const labels=new Map();
+  for(const b of BOOKS) for(const genre of genreNames(b)) if(!labels.has("g:"+norm(genre))) labels.set("g:"+norm(genre),genre);
+  const genres=[...labels].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR",{sensitivity:"base"}));
+  if(fdGenre!=="todos"&&!labels.has(fdGenre)) fdGenre="todos";
   const wrap=$("#filters");
-  wrap.innerHTML="";
-  const mk=(label,key,val)=>`<button class="pill ${fdStatus===key&&val==="st"||fdGenre===key&&val==="g"?"on":""}" data-k="${val}" data-v="${key}">${label}</button>`;
-  wrap.insertAdjacentHTML("beforeend", mk("Todos","todos","st"));
-  STATUS.forEach(s=>wrap.insertAdjacentHTML("beforeend", mk(s,s,"st")));
-  wrap.insertAdjacentHTML("beforeend", `<span style="width:1px;align-self:stretch;background:oklch(0.4 0.04 45 / .2)"></span>`);
-  wrap.insertAdjacentHTML("beforeend", mk("Gênero: todos","todos","g"));
-  genres.forEach(g=>wrap.insertAdjacentHTML("beforeend", mk(g,g,"g")));
+  wrap.innerHTML=`<div class="status-filters" role="group" aria-label="Status da leitura">${["todos",...STATUS].map(status=>`<button class="pill ${fdStatus===status?"on":""}" data-status="${status}" aria-pressed="${fdStatus===status}">${status==="todos"?"Todos":status}</button>`).join("")}</div>
+    <label class="filter-field" for="genreSelect">Gênero<select id="genreSelect"><option value="todos">Todos os gêneros</option>${genres.map(([key,label])=>`<option value="${reviewText(key)}" ${fdGenre===key?"selected":""}>${reviewText(label)}</option>`).join("")}</select></label>
+    <label class="filter-field filter-search" for="filterSearch">Buscar livro<input type="search" id="filterSearch" placeholder="Título ou autor" value="${reviewText(fdSearch)}"></label>`;
   wrap.querySelectorAll(".pill").forEach(p=>p.addEventListener("click",()=>{
-    const k=p.dataset.v, v=p.dataset.k;
-    if(k==="st") fdStatus=v; else fdGenre=v;
-    renderFilters(); renderShelves();
+    fdStatus=p.dataset.status; renderFilters(); renderShelves();
   }));
+  $("#genreSelect",wrap).addEventListener("change",e=>{ fdGenre=e.target.value; renderShelves(); });
+  $("#filterSearch",wrap).addEventListener("input",e=>{ fdSearch=e.target.value; renderShelves(); });
 }
 function bookSize(b){ const h=86+(hashHue(b.title||"")%54); return h; }
 function cardHTML(b, mode){
@@ -833,35 +884,42 @@ function cardHTML(b, mode){
     </div>
   </div>`;
 }
-function renderShelves(){
-  const list=visibleBooks();
-  const wrap=$("#shelves");
-  wrap.innerHTML="";
-  $("#empty").hidden = list.length>0;
-  renderStats();
-  if(!list.length) return;
-  const avail=Math.max(180, wrap.clientWidth-28);
-  const rows=[]; let row=[], wsum=0;
-  for(let i=0;i<list.length;i++){
-    const b=list[i];
+function renderShelfRows(list,parent,read){
+  const avail=Math.max(72,parent.clientWidth-120);
+  const rows=[]; let row=[],wsum=0;
+  for(const b of list){
     const bw=Math.max(40,Math.round(bookSize(b)*2/3))+4;
-    if(row.length && wsum+bw>avail){ rows.push(row); row=[]; wsum=0; }
+    if(row.length&&wsum+bw>avail){ rows.push(row); row=[]; wsum=0; }
     row.push(b); wsum+=bw;
   }
   if(row.length) rows.push(row);
   rows.forEach((r,ri)=>{
     const sf=document.createElement("div"); sf.className="shelf";
-    let inner="";
-    r.forEach((b,mi)=>{ inner+=cardHTML(b, mi+ri*3); });
-    sf.innerHTML=`<div class="shelf-head">Prateleira ${ri+1}<i>${r.length} livros</i></div>
+    const inner=r.map((b,mi)=>cardHTML(b,mi+ri*3)).join("");
+    sf.innerHTML=`<div class="shelf-head">${read?"Prateleira de lidos":"Prateleira"} ${ri+1}<i>${r.length} livros</i></div>
       <div class="shelf-wood"><div class="books">${inner}
         <div class="deco"><div class="dbookend"></div><div class="dstack"></div></div>
       </div></div><div class="rail"></div>`;
-    wrap.appendChild(sf);
+    parent.appendChild(sf);
   });
+}
+function renderShelves(){
+  const list=visibleBooks(),wrap=$("#shelves");
+  wrap.innerHTML="";
+  $("#empty").hidden=list.length>0;
+  renderStats();
+  const groups=[{key:"active",title:"Minha estante",books:list.filter(b=>b.status!=="Lido")},{key:"read",title:"Livros lidos",books:list.filter(b=>b.status==="Lido")}];
+  for(const group of groups){
+    if(!group.books.length) continue;
+    const section=document.createElement("section"); section.className="shelf-section";
+    section.dataset.shelfGroup=group.key; section.setAttribute("aria-labelledby",`shelfTitle-${group.key}`);
+    section.innerHTML=`<h2 id="shelfTitle-${group.key}">${group.title}<span>${group.books.length} livro${group.books.length===1?"":"s"}</span></h2>`;
+    wrap.appendChild(section);
+    renderShelfRows(group.books,section,group.key==="read");
+  }
   wrap.querySelectorAll(".book-card").forEach(c=>c.addEventListener("click",()=>{
     const rect=c.querySelector(".cover-wrap").getBoundingClientRect();
-    openBook(c.dataset.id, rect);
+    openBook(c.dataset.id,rect);
   }));
 }
 function renderStats(){
@@ -1118,9 +1176,11 @@ async function saveCitacao(bookId){
   if(!text){ toast("Escreva a citação."); textEl.focus(); return; }
   if(!pageEl.reportValidity()) return;
   const old=(b.citacoes||[]).find(c=>String(c.id)===String(state.cid));
-  const quote=Object.assign({},old||{id:uid(),ts:Date.now()},{text,page:+pageEl.value});
+  if(state.cid!==null&&!old){ toast("Esta citação foi excluída em outro aparelho. Seu texto continua no editor."); return; }
+  const stamp=Math.max(Date.now(),(+b.updatedAt||0)+1,(+old?.updatedAt||0)+1,(+old?.ts||0)+1);
+  const quote=Object.assign({},old||{id:uid(),ts:stamp},{text,page:+pageEl.value,updatedAt:stamp});
   const citacoes=old?b.citacoes.map(c=>c.id===old.id?quote:c):(b.citacoes||[]).concat(quote);
-  const next=Object.assign({},b,{citacoes,updatedAt:Date.now()});
+  const next=Object.assign({},b,{citacoes,updatedAt:stamp});
   save.disabled=true;
   try{ await putOf("books",next); }
   catch(e){ save.disabled=false; toast("Não foi possível salvar. Sua citação continua na folha."); return; }
@@ -1135,7 +1195,9 @@ async function delCitacao(bookId,cid){
   const button=$("#ficDelete"); if(button?.disabled) return;
   if(button) button.disabled=true;
   const list=sortedCitacoes(b),index=list.findIndex(c=>String(c.id)===String(cid));
-  const next=Object.assign({},b,{citacoes:(b.citacoes||[]).filter(c=>String(c.id)!==String(cid)),updatedAt:Date.now()});
+  const stamp=Math.max(Date.now(),(+b.updatedAt||0)+1);
+  const deletedCitacoes=(b.deletedCitacoes||[]).filter(d=>String(d.id)!==String(cid)).concat({id:String(cid),ts:stamp});
+  const next=Object.assign({},b,{citacoes:(b.citacoes||[]).filter(c=>String(c.id)!==String(cid)),deletedCitacoes,updatedAt:stamp});
   try{ await putOf("books",next); }
   catch(e){ if(button) button.disabled=false; toast("Não foi possível excluir a citação."); return; }
   const i=BOOKS.findIndex(x=>x.id===bookId); if(i>=0) BOOKS[i]=next;
@@ -1173,6 +1235,7 @@ function closeLeitura(){
   const el=$("#leitura");
   el.classList.remove("open"); el.innerHTML=""; el.onclick=null;
   document.body.style.overflow=$("#fichario").classList.contains("open")?"hidden":"";
+  if(ficharioState&&!ficharioState.writing) renderFichario(ficharioState.bookId);
   leituraReturnFocus?.focus({preventScroll:true}); leituraReturnFocus=null;
 }
 

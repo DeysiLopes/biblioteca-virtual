@@ -1,6 +1,6 @@
 # TODO — Integrações e novas funcionalidades da Minha Biblioteca
 
-Status: planejamento. Nenhuma integração ou funcionalidade nova implementada nesta etapa.
+Status: execução iniciada em 2026-10-12 pelas correções do app. CSV, IA/vídeos e funcionalidades complementares continuam pendentes; a integração por ISBN ficará por último e exige estudo separado.
 
 ## Retomar esta sessão
 
@@ -64,7 +64,7 @@ Ponto observado no código: `pickOV` ignora arrays vazios. Assim, `citacoes: []`
 
 ## Objetivo
 
-Permitir informar o ISBN de um livro, consultar uma API de metadados e revisar os dados encontrados antes de adicionar o livro ou completar seu cadastro na Minha Biblioteca.
+Começar pelas correções de sincronização/exclusão, filtros e organização da Estante. A consulta e o cadastro automático por ISBN ficam para a última etapa, com estudo prévio detalhado em [todo-isbn.md](todo-isbn.md).
 
 Também avaliar a captura de recomendações por links de Instagram Reels/TikTok, identificação de livros em vídeos com IA e exportação de toda a biblioteca em CSV, usando o MyReelReads como referência funcional.
 
@@ -77,91 +77,9 @@ O app deve continuar sendo um PWA estático no GitHub Pages, com IndexedDB e sin
 - Open Library — diretrizes e limites: https://openlibrary.org/developers/api
 - Referência funcional — MyReelReads: BookTok Finder: https://play.google.com/store/apps/details?id=com.bookig.mobile
 
-## 1. Comparar os provedores
+## Integração por ISBN — última etapa
 
-| Ponto | Google Books | Open Library |
-| --- | --- | --- |
-| Consulta por ISBN | Pesquisa de volumes com `q=isbn:ISBN` | Consulta da edição em `/isbn/ISBN.json` |
-| Identificação | A documentação exige chave de API ou token para identificar solicitações públicas | As consultas públicas documentadas não exigem chave de API |
-| Metadados | `volumeInfo`: título, autores, editora, descrição, páginas, idioma e imagens, quando disponíveis | Dados de edição; nomes de autores e descrição podem exigir consultas adicionais |
-| Cuidados | Cotas do projeto, restrições da chave e validação do ISBN retornado | Limites de uso, campos incompletos e distinção entre obra e edição |
-
-- [ ] Comparar a cobertura com uma amostra de ISBNs da biblioteca: livros brasileiros, traduções, edições estrangeiras e diferentes formatos.
-- [ ] Medir correspondência exata do ISBN, qualidade da capa, quantidade de páginas, disponibilidade de campos, latência e falhas.
-- [ ] Verificar cotas e condições atuais do Google Books, sem presumir uma quantidade fixa de consultas gratuitas.
-- [ ] Respeitar os limites documentados da Open Library: 1 requisição por segundo sem identificação; 3 por segundo com identificação aceita. Contabilizar também consultas adicionais a autores e obras.
-- [ ] Avaliar identificação da aplicação na Open Library e as limitações de configurar `User-Agent` em chamadas feitas diretamente pelo navegador.
-- [ ] Validar chamadas com `fetch`/CORS no Edge, no PWA e na origem real do GitHub Pages.
-- [ ] Verificar termos de uso e atribuição de metadados e capas.
-- [ ] Escolher um provedor principal e decidir se haverá fallback para o outro.
-
-Hipótese inicial para avaliação: Open Library por ISBN/edição como primeira tentativa, pela simplicidade de consultas públicas, com Google Books como alternativa. A escolha deve depender dos resultados da amostra, não apenas dessa hipótese.
-
-**Atenção:** a documentação da Open Library classifica `/api/books` como endpoint legado e recomenda considerar a Search API. Avaliar ISBN/Edition e Search antes de adotar o endpoint legado.
-
-## 2. Validar o ISBN e a edição
-
-- [ ] Aceitar ISBN-10 e ISBN-13, removendo espaços, hífens e o prefixo `ISBN`.
-- [ ] Validar o dígito verificador, incluindo `X` na posição final do ISBN-10.
-- [ ] Definir uma representação normalizada e reconhecer ISBN-10/13 equivalentes quando a conversão for possível.
-- [ ] Exibir mensagem em pt-BR para ISBN inválido antes de consultar a API.
-- [ ] Confirmar o ISBN retornado pelo provedor; não escolher cegamente o primeiro resultado.
-- [ ] Conferir idioma, formato e edição: número de páginas e capa não devem vir de outra edição da mesma obra.
-- [ ] Tratar ISBN inexistente, múltiplos resultados e respostas sem identificadores suficientes, permitindo revisão ou cadastro manual.
-
-## 3. Definir os campos preenchidos
-
-- [ ] Mapear para o modelo atual: `title`, `author`, `cover`, `paginas`, `genero` e `idioma`, apenas quando houver dados confiáveis.
-- [ ] Definir campos adicionais mínimos: ISBN normalizado, editora, data de publicação e identificador/proveniência do provedor.
-- [ ] Decidir se subtítulo e sinopse serão guardados e apresentados na interface.
-- [ ] Manter sinopse externa separada de `resenha`, que é o texto escrito pela pessoa usuária.
-- [ ] Normalizar listas de autores e tratar campos ausentes sem substituir informações válidas por valores vazios.
-- [ ] Usar URLs HTTPS válidas para capas e manter a capa de reserva quando a imagem falhar.
-- [ ] Não preencher ou alterar automaticamente status, tipo, nota, comentários, resenha, citações, datas pessoais, `paginasLidas` ou `readingEpoch`.
-- [ ] Pedir confirmação antes de substituir um total de páginas existente, pois ele afeta o percentual de leitura e a identificação da edição.
-
-## 4. Planejar a experiência de uso
-
-- [ ] Definir o ponto de entrada para “Adicionar livro por ISBN”, sem criar outro formulário para as informações pessoais de leitura.
-- [ ] Prever o fluxo: informar ISBN → buscar → revisar dados/capa/edição → confirmar cadastro.
-- [ ] Permitir corrigir os dados encontrados antes de salvar.
-- [ ] Oferecer a busca para completar livros existentes, preenchendo campos vazios por padrão e confirmando substituições.
-- [ ] Exibir carregamento, resultado não encontrado, indisponibilidade e opção de tentar o outro provedor.
-- [ ] Manter o cadastro manual e o uso offline dos livros já salvos.
-- [ ] Não consultar toda a biblioteca automaticamente ao abrir o app.
-
-## 5. Integrar com a persistência e a sincronização
-
-- [ ] Aproveitar o ISBN que `mapRow` já reconhece na importação CSV.
-- [ ] Rever a busca atual de capas por título/autor em `importCSV`; priorizar ISBN válido quando disponível, sem confundir edições.
-- [ ] Rever a detecção de duplicados: hoje o CSV compara títulos. Um mesmo título pode ter edições com ISBNs diferentes.
-- [ ] Manter IDs de livros existentes e os vínculos de diário/citações; não migrar IDs automaticamente para ISBNs.
-- [ ] Definir identificação estável para novos cadastros, sem duplicar livros ao repetir uma busca ou importar um CSV.
-- [ ] Guardar os metadados confirmados no IndexedDB e avaliar cache das consultas por ISBN, inclusive resultados não encontrados com validade limitada.
-- [ ] Rever `OVERRIDE`, `mergeCatalog`, `buildSyncPayload` e `applyRemote` para preservar ISBN, capa e demais campos confirmados após atualização do catálogo e sincronização entre aparelhos.
-- [ ] Garantir que uma resposta de API ou recarga de `books.json` não apague correções manuais nem dados pessoais de leitura.
-- [ ] Avaliar como atualizar e invalidar o cache, com atualização manual dos metadados quando necessário.
-
-## 6. Segurança e confiabilidade
-
-- [ ] Usar a API apenas para metadados públicos; acesso a estantes privadas do Google e login OAuth ficam fora do escopo inicial.
-- [ ] Se escolher Google Books, definir a configuração da chave antes de implementar. Em um frontend estático ela é visível: restringir à API Books e às origens permitidas, e revisar cotas.
-- [ ] Não incluir segredos de cliente OAuth, tokens ou chaves irrestritas no repositório, em logs ou em `data/sync.json`.
-- [ ] Tratar metadados externos como conteúdo não confiável: renderizar texto com segurança e sanitizar descrições que contenham HTML.
-- [ ] Implementar timeout, cancelamento de buscas antigas e proteção contra respostas que cheguem fora de ordem.
-- [ ] Tratar rede indisponível, `404`, `429`, respostas incompletas e falhas do provedor sem bloquear o restante do app.
-- [ ] Usar cache, fila e limites de concorrência; respeitar os limites dos provedores, sem contorná-los ou fazer coleta em massa.
-
-## 7. Prova de conceito e critérios de aceite
-
-- [ ] Criar uma prova de conceito isolada antes de integrar à interface principal.
-- [ ] Testar ISBN-10 válido, ISBN-13 válido, `X`, formatação com hífens, ISBN inválido e edição não encontrada.
-- [ ] Testar capa ausente, múltiplos autores, ausência de páginas/idioma e descrição com HTML.
-- [ ] Testar duplicados, edições diferentes, falha de rede, limite de requisições e fallback.
-- [ ] Testar cancelamento e buscas consecutivas, sem aplicar a resposta de um ISBN ao livro errado.
-- [ ] Testar revisão manual, persistência após recarga e sincronização, usando dados isolados, sem enviar testes ao arquivo real `data/sync.json`.
-- [ ] Confirmar que progresso, dashboard, resenha e citações continuam intactos após o preenchimento de metadados.
-- [ ] Validar Edge, PWA e telas pequenas; incrementar a versão do service worker quando a funcionalidade for publicada.
+O estudo completo foi separado em [todo-isbn.md](todo-isbn.md). Essa é a última etapa do roadmap: primeiro estudar cobertura, edição, segurança, limites e custos; só depois decidir sobre a implementação. Nenhuma API ou chave será ativada nesta etapa.
 
 ## 8. Referência: MyReelReads / BookTok Finder
 
@@ -258,11 +176,14 @@ Atualmente o app importa CSV e exporta backup JSON; ainda não possui exportaç�
 
 Ordem inicial para avaliação, sujeita à escolha da pessoa usuária:
 
-1. Melhorar o ciclo CSV: compatibilidade com MyReelReads e exportação da biblioteca.
-2. Implementar consulta bibliográfica por ISBN com revisão dos resultados.
-3. Prototipar reconhecimento de livros em imagens/frames enviados pela pessoa usuária, medindo falsos positivos e livros não detectados.
-4. Validar acesso autorizado a Reels/TikTok e processamento completo de links com IA.
-5. Avaliar tags, séries, filtros e demais recursos complementares.
+1. Corrigir a exclusão/sincronização das citações, sem alterar os dados reais de teste por tentativa.
+2. Corrigir o filtro de gênero e convertê-lo em dropdown.
+3. Organizar os livros lidos em prateleiras no final da Estante.
+4. Melhorar o ciclo CSV: compatibilidade com MyReelReads e exportação da biblioteca.
+5. Prototipar reconhecimento de livros em imagens/frames enviados pela pessoa usuária, medindo falsos positivos e livros não detectados.
+6. Validar acesso autorizado a Reels/TikTok e processamento completo de links com IA. Backend, provedor e custos precisam de decisão/aprovação antes de implementar.
+7. Avaliar tags, séries, filtros e demais recursos complementares.
+8. Por último, concluir o estudo de [todo-isbn.md](todo-isbn.md) e decidir se e como implementar a integração por ISBN.
 
 - [ ] Montar uma amostra autorizada com vídeos de um livro, vários livros, capas pouco nítidas, ausência de capa, áudio apenas e títulos em diferentes idiomas.
 - [ ] Medir precisão, livros não encontrados, deduplicação, confirmação da edição, custo e tempo de processamento.

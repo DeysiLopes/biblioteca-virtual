@@ -1,0 +1,106 @@
+const runBrowserTest=require("./browser-test.cjs");
+
+const test=async function(){
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const check=(value,message)=>{ if(!value) throw new Error(message); };
+  const clone=value=>structuredClone(value);
+  const errors=[];
+  window.addEventListener("error",e=>errors.push(e.message));
+  window.addEventListener("unhandledrejection",e=>errors.push(String(e.reason)));
+  try{
+    await sleep(1200);
+    registerSW=async()=>{}; pullSync=async()=>{}; loadCatalog=async()=>{};
+    const saved=new Map();
+    putOf=async(name,value)=>saved.set(`${name}:${value.id??value.k}`,clone(value));
+    allOf=async(name)=>[...saved.entries()].filter(([key])=>key.startsWith(name+":")).map(([,value])=>clone(value));
+    store=async(mode,name)=>({put:value=>saved.set(`${name}:${value.id??value.k}`,clone(value))});
+    await init(); META={};
+    const quote={id:"deleted",text:"Uma citação sobre coração & <texto>",page:42,ts:10};
+    const local={id:"sync-test",title:"Livro de teste",author:"Autora",cover:"",status:"Lendo",tipo:"Lazer",paginas:200,paginasLidas:100,readingEpoch:7,resenha:"Resenha com ação",comentarios:"Comentário",inicio:"2026-10-01",citacoes:[quote],updatedAt:10};
+    CATALOG=[Object.freeze(clone(local))]; BOOKS=[clone(local)];
+    await putOf("books",BOOKS[0]); renderDiary(); openFichario(local.id);
+    const confirmOriginal=window.confirm; window.confirm=()=>true;
+    await delCitacao(local.id,quote.id); window.confirm=confirmOriginal;
+    check(BOOKS[0].citacoes.length===0&&document.querySelector(".fic-empty"),"Exclusão local não atualizou o fichário");
+    const payload=buildSyncPayload();
+    check(Array.isArray(payload.books[local.id].citacoes)&&payload.books[local.id].citacoes.length===0,"Payload descartou a exclusão da última citação");
+    check(payload.books[local.id].deletedCitacoes.some(d=>d.id===quote.id),"Exclusão não tem uma marca sincronizável");
+    closeFichario();
+    let remote={v:1,books:{[local.id]:clone(local)},diary:[]},attempts=0;
+    ghApi=async(method,url,body)=>{
+      if(method==="GET") return {sha:String(attempts),content:encodeB64(JSON.stringify(remote))};
+      attempts++;
+      if(attempts===1){ remote.books[local.id].resenha="Resenha nova de outro aparelho"; remote.books[local.id].updatedAt=Date.now()+100; throw Object.assign(new Error("Conflito simulado"),{status:409}); }
+      remote=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(body.content),c=>c.charCodeAt(0))));
+      return {};
+    };
+    check((await apiGetSync()).payload.books[local.id].citacoes[0].text===quote.text,"Contents API corrompeu os caracteres UTF-8");
+    await pushSync(false,true);
+    check(attempts===2&&remote.books[local.id].citacoes.length===0,"Retentativa restaurou a citação excluída");
+    check(remote.books[local.id].resenha==="Resenha nova de outro aparelho","Exclusão apagou uma atualização independente");
+    applyRemoteBook=async(id,ov,cat)=>{
+      const current=(await allOf("books")).find(b=>b.id===id);
+      const next=remoteBookState(id,ov,current,cat);
+      await putOf("books",next);
+      return next;
+    };
+    BOOKS=[clone(local)]; await putOf("books",BOOKS[0]); openFichario(local.id);
+    await applyRemote(remote); renderDiary();
+    check(BOOKS[0].citacoes.length===0&&document.querySelector(".fic-empty"),"Outro aparelho não atualizou o fichário já aberto");
+    check(BOOKS[0].paginasLidas===100&&BOOKS[0].readingEpoch===7,"Sync de citações alterou o progresso");
+    check(CATALOG[0].citacoes.length===1&&CATALOG[0].resenha===local.resenha,"Merge modificou o catálogo base");
+    closeFichario();
+    const clear={updatedAt:Date.now()+1000,citacoes:[],resenha:"",comentarios:"",tipo:"",inicio:null,fim:null};
+    await applyRemote({v:1,books:{[local.id]:clear},diary:[]});
+    check(BOOKS[0].citacoes.length===0&&BOOKS[0].resenha===""&&BOOKS[0].comentarios==="","Campos vazios não foram aplicados");
+    const missing=remoteBookState(local.id,{updatedAt:20,resenha:"Outra resenha"},clone(local),CATALOG[0]);
+    check(missing.citacoes.length===1,"Campo ausente foi confundido com exclusão");
+    const stale=Object.assign({},local,{updatedAt:Date.now()+2000,resenha:"Edição posterior do texto"});
+    const merged=mergePayload({v:1,books:{[local.id]:payload.books[local.id]},diary:[]},{v:1,books:{[local.id]:stale},diary:[]});
+    check(merged.books[local.id].citacoes.length===0&&merged.books[local.id].resenha===stale.resenha,"Aparelho desatualizado ressuscitou uma citação excluída");
+    const added={id:"other",text:"Outra citação",page:50,ts:Date.now()+3000};
+    const together=mergePayload({v:1,books:{[local.id]:payload.books[local.id]},diary:[]},{v:1,books:{[local.id]:Object.assign({},stale,{citacoes:[quote,added],deletedCitacoes:[]})},diary:[]});
+    check(together.books[local.id].citacoes.length===1&&together.books[local.id].citacoes[0].id===added.id,"Exclusão removeu uma citação nova de outro aparelho");
+    const edited=Object.assign({},added,{text:"Texto editado com emoção",updatedAt:added.ts+100});
+    const editMerge=mergeSyncBook({updatedAt:edited.updatedAt,citacoes:[edited],deletedCitacoes:[]},{updatedAt:edited.updatedAt+100,citacoes:[added],deletedCitacoes:[]});
+    check(editMerge.citacoes[0].text===edited.text,"Outro campo mais recente desfez a edição da citação");
+    const projected=mergeCatalog(CATALOG,[Object.assign({},local,{citacoes:[],resenha:"",comentarios:""})]);
+    check(projected[0].citacoes.length===0&&projected[0].resenha===""&&CATALOG[0].citacoes.length===1,"Recarga de catálogo restaurou campos apagados");
+    const legacyClear=mergeSyncBook(local,{updatedAt:20,citacoes:[]});
+    check(mergeSyncBook(legacyClear,Object.assign({},stale,{deletedCitacoes:[]})).citacoes.length===0,"Lista vazia antiga perdeu a exclusão na próxima sincronização");
+    BOOKS=[Object.assign({},local,{citacoes:[quote,added]})]; await putOf("books",BOOKS[0]);
+    openFichario(local.id); document.querySelector("#ficEdit").click();
+    document.querySelector("#cText").value="Rascunho que não deve se perder";
+    await applyRemote({v:1,books:{[local.id]:payload.books[local.id]},diary:[]});
+    check(document.querySelector("#cText").value.includes("Rascunho"),"Pull remoto apagou o editor em uso");
+    await saveCitacao(local.id);
+    check(!BOOKS[0].citacoes.some(c=>c.id===quote.id)&&BOOKS[0].citacoes.length===1,"Editor antigo recriou uma citação apagada em outro aparelho");
+    closeFichario();
+    BOOKS=[Object.assign({},local,{citacoes:[quote,added]})]; await putOf("books",BOOKS[0]);
+    openFichario(local.id); window.confirm=()=>true; await delCitacao(local.id,quote.id); window.confirm=confirmOriginal;
+    check(BOOKS[0].citacoes.length===1&&BOOKS[0].citacoes[0].id===added.id,"Excluir uma entre várias alterou a citação errada");
+    closeFichario();
+    let queuedRemote=clone(buildSyncPayload()),release,writes=0;
+    ghApi=async(method,url,body)=>{
+      if(method==="GET") return {sha:String(writes),content:encodeB64(JSON.stringify(queuedRemote))};
+      const posted=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(body.content),c=>c.charCodeAt(0))));
+      writes++;
+      if(writes===1) return new Promise(resolve=>{ release=()=>{ queuedRemote=posted; resolve({}); }; });
+      queuedRemote=posted; return {};
+    };
+    META.githubToken="fixture-only";
+    BOOKS[0].comentarios="Primeira alteração"; BOOKS[0].updatedAt++;
+    const working=pushSync(); await sleep(10);
+    check(release,"Push simulado não chegou à escrita");
+    BOOKS[0].comentarios="Alteração feita enquanto sincroniza"; BOOKS[0].updatedAt++;
+    markDirty(); await sleep(900); release(); await working; await sleep(1100);
+    check(writes===2&&queuedRemote.books[local.id].comentarios===BOOKS[0].comentarios,"Alteração durante push se perdeu quando o timer encontrou sync ocupado");
+    check(document.querySelector("#syncStat").textContent.includes("sincronizado"),"Sucesso do sync ainda informa que falta sincronizar");
+    clearTimeout(syncTimer); delete META.githubToken;
+    check(errors.length===0,errors.join("; "));
+    document.body.innerHTML='<pre id="testout">'+JSON.stringify({ok:true,test:"sync",width:innerWidth})+'</pre>';
+  }catch(error){
+    document.body.innerHTML='<pre id="testout">'+JSON.stringify({ok:false,error:error.message,errors})+'</pre>';
+  }
+};
+runBrowserTest(test).catch(error=>{ console.error(error); process.exitCode=1; });
