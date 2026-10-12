@@ -30,8 +30,8 @@
     color:#f2e4cd; box-shadow:0 6px 24px -12px oklch(0 0 0 / .6), inset 0 -1px 0 oklch(0.78 0.08 75 / .22);
   }
   header .logo{
-    width:40px;height:40px;border-radius:10px;object-fit:cover;
-    background:var(--paper); box-shadow:0 4px 10px -4px oklch(0 0 0 / .5);
+    width:40px;height:40px;border-radius:50%;object-fit:cover;
+    box-shadow:0 4px 10px -4px oklch(0 0 0 / .5);
   }
   header h1{font-size:19px; font-weight:800; letter-spacing:.3px; flex:1;}
   header h1 small{display:block; font-size:11px; font-weight:600; opacity:.75;}

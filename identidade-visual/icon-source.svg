@@ -1,0 +1,74 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a0f45"/>
+      <stop offset=".45" stop-color="#521b7d"/>
+      <stop offset="1" stop-color="#8f2f8f"/>
+    </linearGradient>
+    <radialGradient id="glowPink" cx=".78" cy=".85" r=".75">
+      <stop offset="0" stop-color="#e0559a" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#e0559a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowTop" cx=".2" cy=".1" r=".6">
+      <stop offset="0" stop-color="#cdb4ff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#cdb4ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efeafc"/>
+      <stop offset="1" stop-color="#cfc2ee"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glowPink)"/>
+  <rect width="512" height="512" fill="url(#glowTop)"/>
+
+  <g id="art">
+  <!-- estrelinhas -->
+  <g fill="#ffd98a">
+    <path d="M84 96 l6 14 14 6 -14 6 -6 14 -6-14 -14-6 14-6z" opacity=".9"/>
+    <path d="M428 70 l5 12 12 5 -12 5 -5 12 -5-12 -12-5 12-5z" opacity=".85"/>
+    <path d="M60 400 l4 10 10 4 -10 4 -4 10 -4-10 -10-4 10-4z" opacity=".7"/>
+  </g>
+  <path d="M452 330 l4 10 10 4 -10 4 -4 10 -4-10 -10-4 10-4z" fill="#cdb4ff" opacity=".8"/>
+
+  <!-- sombra no chão -->
+  <ellipse cx="256" cy="420" rx="150" ry="26" fill="#1a0b2e" opacity=".5" filter="url(#soft)"/>
+
+  <!-- fantasminha (lençol) -->
+  <path d="M136 400 L136 214 C136 128 190 74 256 74 C322 74 376 128 376 214 L376 400
+           C364 384 350 380 338 392 C326 404 312 404 302 392 C292 380 278 380 268 392
+           C258 404 244 404 234 392 C224 380 210 380 200 392 C190 404 176 404 166 392
+           C156 380 146 386 136 400 Z" fill="url(#sheet)"/>
+  <path d="M136 214 C136 128 190 74 256 74" fill="none" stroke="#f8f5ff" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+
+  <!-- rosto do fantasma -->
+  <ellipse cx="216" cy="186" rx="13" ry="17" fill="#241a33"/>
+  <ellipse cx="296" cy="186" rx="13" ry="17" fill="#241a33"/>
+  <path d="M242 218 q7 9 14 0 q7 9 14 0" fill="none" stroke="#241a33" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="196" cy="216" rx="16" ry="9" fill="#e88ab8" opacity=".4"/>
+  <ellipse cx="316" cy="216" rx="16" ry="9" fill="#e88ab8" opacity=".4"/>
+
+  <!-- gato preto no colo -->
+  <ellipse cx="256" cy="348" rx="62" ry="70" fill="#18101f"/>
+  <path d="M306 366 q66 16 58 -54" fill="none" stroke="#18101f" stroke-width="19" stroke-linecap="round"/>
+  <circle cx="256" cy="272" r="47" fill="#18101f"/>
+  <path d="M220 246 L204 200 L250 226 Z" fill="#18101f"/>
+  <path d="M292 246 L308 200 L262 226 Z" fill="#18101f"/>
+  <path d="M222 240 L213 210 L241 227 Z" fill="#3a2245" opacity=".85"/>
+  <path d="M290 240 L299 210 L271 227 Z" fill="#3a2245" opacity=".85"/>
+  <ellipse cx="238" cy="272" rx="9" ry="11" fill="#ffd98a" transform="rotate(-12 238 272)"/>
+  <ellipse cx="274" cy="272" rx="9" ry="11" fill="#ffd98a" transform="rotate(12 274 272)"/>
+  <ellipse cx="238" cy="273" rx="2.6" ry="8" fill="#241a33"/>
+  <ellipse cx="274" cy="273" rx="2.6" ry="8" fill="#241a33"/>
+  <ellipse cx="240" cy="372" rx="16" ry="12" fill="#221527"/>
+  <ellipse cx="272" cy="372" rx="16" ry="12" fill="#221527"/>
+
+  <!-- braços do fantasma abraçando o gato -->
+  <ellipse cx="188" cy="332" rx="24" ry="44" fill="#d9cfef" transform="rotate(24 188 332)"/>
+  <ellipse cx="324" cy="332" rx="24" ry="44" fill="#d9cfef" transform="rotate(-24 324 332)"/>
+  </g>
+</svg>

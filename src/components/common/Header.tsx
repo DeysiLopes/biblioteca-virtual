@@ -45,7 +45,7 @@ export const Header: React.FC = () => {
 
   return (
     <header>
-      <img className="logo" src="icon-192.png" alt="Minha Biblioteca" />
+      <img className="logo" src={`${import.meta.env.BASE_URL}favicon-ghost.png`} alt="Minha Biblioteca" />
       <h1>
         Minha Biblioteca <small>estante · diário · avisos · {__BUILD_STAMP__}</small>
       </h1>
