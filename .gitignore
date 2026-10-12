@@ -2,9 +2,16 @@
 /.agents/
 /.aiwf/
 /node_modules/
+/dist/
+index.vanilla.html
 
 # Variáveis de ambiente (credenciais locais — NÃO commitar)
 .env
 .env.local
 .env.*.local
 !.env.example
+
+# Dados pessoais de leitura (ficam apenas locais; storage real vai para o Google Drive)
+data/
+books.json
+identidade-visual/photo_*.jpg
