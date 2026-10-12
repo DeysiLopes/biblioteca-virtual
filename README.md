@@ -28,6 +28,8 @@ PWA de estante + diário de leitura — **React 18 + Vite + TypeScript**, sincro
 
 ## Sincronização e dados
 
+> ⚠️ **Login Google em testes** — a tela de consentimento do OAuth ainda não foi publicada, então o login **ainda não está disponível** para outras pessoas. Sem login o app funciona normalmente, 100% offline e local. Quando o login for liberado, o app faz backup de tudo que já estiver salvo no aparelho pro seu Drive.
+
 - **Google Drive = fonte da verdade**: `biblioteca-<userId>.json` na pasta "Minha Biblioteca", via Drive REST API v3 + Google Identity Services (escopo `drive.file`).
 - **IndexedDB local**: funciona 100% offline; memória/IndexedDB/Drive são estados separados e as abas se sincronizam por BroadcastChannel.
 - **Primeiro login** em cada aparelho pergunta: **mesclar** dados locais com o Drive ou **limpar e baixar** só a nuvem. A resposta é lembrada por usuário/aparelho.
