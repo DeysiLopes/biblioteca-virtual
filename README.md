@@ -4,6 +4,8 @@ PWA de estante + diário de leitura — **React 18 + Vite + TypeScript**, sincro
 
 **Site:** https://deysilopes.github.io/biblioteca-virtual/
 
+☕ **Gostou? [Me pague um café](https://buymeacoffee.com/deysilopes)** — toda graninha ajuda a manter o projeto vivo.
+
 ## Instalar como app (celular / tablet)
 
 1. Abra https://deysilopes.github.io/biblioteca-virtual/ no navegador.
@@ -62,6 +64,12 @@ O workflow `.github/workflows/react-vite.yml` roda testes, builda o `dist/` e pu
 - `identidade-visual/` — referências visuais (somente local)
 - `vite.config.ts` — base `/biblioteca-virtual/`, manifest e workbox do PWA
 - `AGENTS.md` / `CONTEXT.md` — orientações e histórico de decisões
+
+## Apoie o projeto ☕
+
+Se a biblioteca te ajudou a organizar suas leituras, considere apoiar:
+
+**[buymeacoffee.com/deysilopes](https://buymeacoffee.com/deysilopes)**
 
 ## Privacidade
 
