@@ -1,6 +1,7 @@
 /bugs/
 /.agents/
 /.aiwf/
+/node_modules/
 
 # Variáveis de ambiente (credenciais locais — NÃO commitar)
 .env
