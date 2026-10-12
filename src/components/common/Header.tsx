@@ -23,7 +23,7 @@ export const Header: React.FC = () => {
     <header>
       <img className="logo" src="icon-192.png" alt="Minha Biblioteca" />
       <h1>
-        Minha Biblioteca <small>estante · diário · avisos</small>
+        Minha Biblioteca <small>estante · diário · avisos · {__BUILD_STAMP__}</small>
       </h1>
       <div className="actions">
         <button

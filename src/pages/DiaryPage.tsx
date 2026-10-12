@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
 import { Book } from '../core/models/book';
 import { StatsSummary } from '../components/diary/StatsSummary';
@@ -6,7 +6,7 @@ import { WeeklyChart } from '../components/diary/WeeklyChart';
 import { DiaryCard } from '../components/diary/DiaryCard';
 import { BookModal } from '../components/book/BookModal';
 import { FlipBook } from '../components/book/FlipBook';
-import { ReviewNotebook } from '../components/review/ReviewNotebook';
+import { ReviewNotebook, CoverOrigin } from '../components/review/ReviewNotebook';
 import { FicharioModal } from '../components/quotes/FicharioModal';
 
 export const DiaryPage: React.FC = () => {
@@ -15,7 +15,17 @@ export const DiaryPage: React.FC = () => {
   const [modalBook, setModalBook] = useState<Book | null>(null);
   const [flipBook, setFlipBook] = useState<Book | null>(null);
   const [notebookBook, setNotebookBook] = useState<Book | null>(null);
+  const [coverOrigin, setCoverOrigin] = useState<CoverOrigin | null>(null);
   const [quotesBook, setQuotesBook] = useState<Book | null>(null);
+
+  // Trava o scroll da página enquanto qualquer overlay estiver aberto (como no MVP 1)
+  useEffect(() => {
+    const anyOpen = Boolean(modalBook || flipBook || quotesBook);
+    document.body.style.overflow = anyOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [modalBook, flipBook, quotesBook]);
 
   const handleRegisterToday = () => {
     const lendo = books.find((b) => b.status === 'Lendo');
@@ -26,37 +36,37 @@ export const DiaryPage: React.FC = () => {
     }
   };
 
-  const handleOpenNotebookFromFlip = (bookId: string) => {
-    const found = books.find((b) => b.id === bookId);
-    if (found) {
-      setFlipBook(null);
-      setNotebookBook(found);
-    }
+  // Abre a folha do caderno sobre a contracapa: a capa sobe e encaixa acima da folha
+  const handleOpenNotebookFromFlip = (book: Book) => {
+    const rect = document
+      .querySelector('#flipview .flip-book')
+      ?.getBoundingClientRect();
+    setCoverOrigin(
+      rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null
+    );
+    setNotebookBook(book);
   };
 
+  // Salva a resenha e retorna à contracapa (estado anterior), como no MVP 1
   const handleSaveReview = async (bookId: string, reviewText: string) => {
-    const found = books.find((b) => b.id === bookId);
-    if (found) {
+    const base = books.find((b) => b.id === bookId) ?? notebookBook;
+    if (base) {
       const updated: Book = {
-        ...found,
+        ...base,
         resenha: reviewText,
         updatedAt: Date.now(),
       };
       await saveBook(updated);
-      // Fecha o caderno e retorna para o flipbook na contracapa com o X
-      setNotebookBook(null);
       setFlipBook(updated);
     }
+    setNotebookBook(null);
+    setCoverOrigin(null);
   };
 
+  // Fechar a folha retorna à contracapa; só o "Fechar" da contracapa volta ao diário
   const handleCloseNotebook = () => {
-    if (notebookBook) {
-      const current = notebookBook;
-      setNotebookBook(null);
-      setFlipBook(current);
-    } else {
-      setNotebookBook(null);
-    }
+    setNotebookBook(null);
+    setCoverOrigin(null);
   };
 
   // Livros com atividade no diário ou em andamento
@@ -139,9 +149,9 @@ export const DiaryPage: React.FC = () => {
 
       {flipBook && (
         <FlipBook
+          key={flipBook.id}
           book={flipBook}
-          isOpen={true}
-          initialFlipped={true}
+          isOpen={!notebookBook}
           onClose={() => setFlipBook(null)}
           onOpenNotebook={handleOpenNotebookFromFlip}
         />
@@ -151,6 +161,7 @@ export const DiaryPage: React.FC = () => {
         <ReviewNotebook
           book={notebookBook}
           isOpen={true}
+          coverOrigin={coverOrigin}
           onClose={handleCloseNotebook}
           onSave={handleSaveReview}
         />

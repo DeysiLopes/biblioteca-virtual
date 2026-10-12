@@ -38,15 +38,19 @@ export class LibrarySyncManager {
           fetch('./data/sync.json'),
         ]);
 
-        let catalog: Book[] = [];
-        if (booksRes.status === 'fulfilled' && booksRes.value.ok) {
-          catalog = await booksRes.value.json();
-        }
+        // Caminho ausente devolve o index.html (SPA fallback / 404 do Pages): só aceita JSON
+        const tryJson = async (res: PromiseSettledResult<Response>) => {
+          if (res.status !== 'fulfilled' || !res.value.ok) return null;
+          if (!res.value.headers.get('content-type')?.includes('application/json')) return null;
+          try {
+            return await res.value.json();
+          } catch {
+            return null;
+          }
+        };
 
-        let legacySync: any = null;
-        if (syncRes.status === 'fulfilled' && syncRes.value.ok) {
-          legacySync = await syncRes.value.json();
-        }
+        const catalog: Book[] = ((await tryJson(booksRes)) as Book[] | null) ?? [];
+        const legacySync = await tryJson(syncRes);
 
         if (legacySync) {
           const migrated = migrateLegacySyncData(legacySync, catalog);

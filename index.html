@@ -21,7 +21,7 @@
     <script type="text/javascript">
       (function(l) {
         if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) { 
+          var decoded = l.search.slice(1).split('&').map(function(s) {
             return s.replace(/~and~/g, '&');
           }).join('?');
           window.history.replaceState(null, null,
@@ -29,6 +29,28 @@
           );
         }
       }(window.location));
+    </script>
+    <!-- Recuperação de cache: recarrega se o app não montar (módulos 404/504) ou
+         se um chunk dinâmico falhar, buscando a versão nova. Trava anti-loop. -->
+    <script type="text/javascript">
+      // Em dev (o Vite injeta /@vite/client), remove SWs antigos que serviriam build velho
+      if (document.querySelector('script[src*="/@vite/client"]') && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          rs.forEach(function (r) { r.unregister(); });
+        });
+      }
+      window.addEventListener('vite:preloadError', function () {
+        window.location.reload();
+      });
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && root.childElementCount === 0) {
+          var last = +window.sessionStorage.getItem('bib-reload-ts') || 0;
+          if (Date.now() - last < 120000) return;
+          window.sessionStorage.setItem('bib-reload-ts', String(Date.now()));
+          window.location.reload();
+        }
+      }, 6000);
     </script>
   </head>
   <body>

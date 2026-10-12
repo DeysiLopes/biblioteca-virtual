@@ -29,16 +29,19 @@ App PWA da estante de livros: estante interativa com capas, diário de leitura, 
 
 ```bash
 cd ~/workspace/biblioteca-virtual
-git add -A && git commit -m "..." && git push
+git push origin main
 ```
 
-O GitHub Pages (branch `main`, raiz) recompila automaticamente.
+O workflow `.github/workflows/react-vite.yml` instala as dependências, executa os
+testes, gera o `dist/` e publica no GitHub Pages depois de um push aprovado em
+`main`. Pull requests apenas validam o app. Nas configurações do repositório,
+GitHub Pages deve usar **GitHub Actions** como fonte de build/deploy.
 
 ## Arquivos
 
-- `index.html` — o app (PWA)
-- `sw.js` — service worker (offline + cache de capas)
-- `manifest.webmanifest` — manifesto do app instalável
-- `icon-192.png` / `icon-512.png` / `icon-maskable-*.png` — ícones (gerados por `scripts/icons.cjs`)
-- `books.json` — catálogo gerado do Notion
-- `gerar-books.js` — puxa o banco Leituras do Notion e gera `books.json`
+- `index.html` — entrada do Vite
+- `src/` — app React, regras de negócio, storage e testes
+- `public/` — ícones e fallback do GitHub Pages
+- `vite.config.ts` — base `/biblioteca-virtual/` e PWA
+- `.github/workflows/react-vite.yml` — CI/CD de teste, build e publicação
+- `.agents/artifacts/mvp1-fonte-verdade/` — runtime vanilla legado do MVP 1

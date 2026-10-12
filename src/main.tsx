@@ -7,10 +7,11 @@ import './styles/global.css';
 // Registro automático do Service Worker gerado pelo VitePWA
 if ('serviceWorker' in navigator && !import.meta.env.DEV) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({
+    const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
-        console.log('Nova versão da Minha Biblioteca disponível.');
+        // Nova versão no ar: ativa o SW novo e recarrega, limpando caches antigos
+        updateSW(true);
       },
       onOfflineReady() {
         console.log('App pronto para funcionar offline.');

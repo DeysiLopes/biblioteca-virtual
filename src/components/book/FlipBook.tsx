@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Book } from '../../core/models/book';
 import { getBookFallback } from './BookCard';
 
@@ -6,8 +6,7 @@ interface FlipBookProps {
   book: Book;
   isOpen: boolean;
   onClose: () => void;
-  onOpenNotebook: (bookId: string) => void;
-  initialFlipped?: boolean;
+  onOpenNotebook: (book: Book) => void;
 }
 
 export const FlipBook: React.FC<FlipBookProps> = ({
@@ -15,22 +14,75 @@ export const FlipBook: React.FC<FlipBookProps> = ({
   isOpen,
   onClose,
   onOpenNotebook,
-  initialFlipped = false,
 }) => {
-  const [flipped, setFlipped] = useState(initialFlipped);
+  const [flipped, setFlipped] = useState(false);
+  const [ready, setReady] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Blindagem: CSS velho, falha de carregamento ou extensão de navegador não pode
+  // deixar a capa cobrir a tela — a geometria crítica é reforçada com !important
   useEffect(() => {
-    if (isOpen) {
-      if (initialFlipped) {
-        setFlipped(true);
-      } else {
-        const timer = setTimeout(() => setFlipped(true), 260);
-        return () => clearTimeout(timer);
-      }
-    } else {
-      setFlipped(false);
+    if (!isOpen) return;
+    const fv = overlayRef.current;
+    if (!fv) return;
+    const imp = (el: HTMLElement, p: string, v: string) =>
+      el.style.setProperty(p, v, 'important');
+    imp(fv, 'position', 'fixed');
+    imp(fv, 'inset', '0');
+    imp(fv, 'z-index', '88');
+    imp(fv, 'display', 'flex');
+    imp(fv, 'align-items', 'center');
+    imp(fv, 'justify-content', 'center');
+    const bookEl = fv.querySelector<HTMLElement>('.flip-book');
+    if (bookEl) {
+      imp(bookEl, 'width', 'min(70vw,300px)');
+      imp(bookEl, 'height', 'min(72vh,450px)');
+      imp(bookEl, 'max-width', '300px');
+      imp(bookEl, 'max-height', '450px');
+      imp(bookEl, 'flex-shrink', '0');
     }
-  }, [isOpen, initialFlipped]);
+    const innerEl = fv.querySelector<HTMLElement>('.flip-inner');
+    if (innerEl) {
+      imp(innerEl, 'position', 'relative');
+      imp(innerEl, 'width', '100%');
+      imp(innerEl, 'height', '100%');
+      imp(innerEl, 'transform-style', 'preserve-3d');
+    }
+    fv.querySelectorAll<HTMLElement>('.flip-face').forEach((f) => {
+      imp(f, 'position', 'absolute');
+      imp(f, 'inset', '0');
+      imp(f, 'backface-visibility', 'hidden');
+    });
+    // Se nem o !important resolveu (ex.: extensão agressiva), fecha p/ não travar
+    const t = setTimeout(() => {
+      const w = bookEl?.getBoundingClientRect().width ?? 0;
+      if (w > 420) {
+        console.error(
+          '[bib] contracapa irrecuperável — fechando overlay para não travar a tela.',
+          { width: w, sheets: document.styleSheets.length }
+        );
+        onClose();
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [isOpen, onClose]);
+
+  // MVP 1: a capa aparece de frente e vira sozinha após 260ms para a contracapa
+  useEffect(() => {
+    if (!isOpen || flipped) return;
+    const timer = setTimeout(() => setFlipped(true), 260);
+    return () => clearTimeout(timer);
+  }, [isOpen, flipped]);
+
+  // A contracapa só fica interativa ("ready") quando o giro termina
+  useEffect(() => {
+    if (!isOpen || !flipped || ready) return;
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = setTimeout(() => setReady(true), reduced ? 0 : 820);
+    return () => clearTimeout(timer);
+  }, [isOpen, flipped, ready]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -46,12 +98,33 @@ export const FlipBook: React.FC<FlipBookProps> = ({
 
   const fb = getBookFallback(book.title);
 
+  // Clique na capa: vira para a contracapa; na contracapa pronta: abre o caderno
+  const handleBookActivate = () => {
+    if (ready) {
+      onOpenNotebook(book);
+    } else {
+      setFlipped(true);
+    }
+  };
+
+  const resenha = (book.resenha || '').trim();
+
   return (
     <div
       id="flipview"
+      ref={overlayRef}
       className="open"
       role="dialog"
       aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 88,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -90,19 +163,45 @@ export const FlipBook: React.FC<FlipBookProps> = ({
         tabIndex={0}
         role="button"
         aria-label="Capa do livro em 3D. Pressione Enter ou clique para virar."
-        onClick={() => setFlipped(!flipped)}
+        style={{
+          width: 'min(70vw,300px)',
+          height: 'min(72vh,450px)',
+          maxWidth: 300,
+          maxHeight: 450,
+          flexShrink: 0,
+        }}
+        onClick={handleBookActivate}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setFlipped(!flipped);
+            handleBookActivate();
           }
         }}
       >
-        <div className="flip-inner">
+        <div
+          className="flip-inner"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            transformStyle: 'preserve-3d',
+            transition: 'transform .8s cubic-bezier(.5,.05,.3,1)',
+            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
+        >
           {/* Face frontal: Capa */}
           <div
             className="flip-face front"
-            style={{ '--g1': fb.g1, '--g2': fb.g2 } as React.CSSProperties}
+            style={
+              {
+                '--g1': fb.g1,
+                '--g2': fb.g2,
+                position: 'absolute',
+                inset: 0,
+                backfaceVisibility: 'hidden',
+                background: `linear-gradient(150deg, ${fb.g1}, ${fb.g2})`,
+              } as React.CSSProperties
+            }
           >
             <div className="fallback">{fb.initials}</div>
             {book.cover ? (
@@ -117,7 +216,15 @@ export const FlipBook: React.FC<FlipBookProps> = ({
           </div>
 
           {/* Face traseira: Contracapa / Resenha */}
-          <div className="flip-face back">
+          <div
+            className="flip-face back"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <span className="blab">Contracapa</span>
               <button
@@ -148,31 +255,17 @@ export const FlipBook: React.FC<FlipBookProps> = ({
               </p>
             )}
 
-            <div
-              className="rv"
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                fontSize: 14,
-                lineHeight: 1.6,
-                color: 'var(--ink)',
-                padding: '6px 0',
-              }}
-            >
-              {book.resenha ? (
-                book.resenha
-              ) : (
-                <p className="hint" style={{ color: 'var(--ink2)', fontStyle: 'italic' }}>
-                  Nenhuma resenha registrada ainda. Clique abaixo para escrever no caderno!
-                </p>
-              )}
+            <div className={`rv ${resenha ? '' : 'empty'}`}>
+              {resenha || 'Sem resenha ainda — toque para escrever no caderno.'}
             </div>
+            <div className="hint">toque para escrever no caderno ✍️</div>
 
             <button
-              className="edit-review"
+              className="edit-review mbtn primary"
+              disabled={!ready}
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenNotebook(book.id);
+                if (ready) onOpenNotebook(book);
               }}
               style={{
                 marginTop: 10,
@@ -183,9 +276,10 @@ export const FlipBook: React.FC<FlipBookProps> = ({
                 fontWeight: 700,
                 border: 'none',
                 cursor: 'pointer',
+                width: '100%',
               }}
             >
-              ✍️ {book.resenha ? 'Editar resenha' : 'Escrever resenha'}
+              ✍️ {resenha ? 'Editar resenha' : 'Escrever resenha'}
             </button>
           </div>
         </div>

@@ -6,6 +6,10 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/biblioteca-virtual/',
+  define: {
+    // Carimbo visível no header para identificar a versão em execução
+    __BUILD_STAMP__: JSON.stringify(new Date().toISOString().slice(5, 16).replace('T', ' ')),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -57,6 +61,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,json}'],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/(covers\.openlibrary\.org|books\.google\.com|images\.unsplash\.com)\/.*/i,

@@ -44,7 +44,7 @@
 - Os livros com status "Lido" ficam nas prateleiras do final da Estante, mas continuam acessíveis. Filtros e busca alteram a visualização, não os dados dos livros.
 - Citações exigem texto e página maior que zero. Use as regras de `quotes.ts`; editar preserva `id` e `ts`, e excluir mantém o ID em `deletedCitacoes`. Não reintroduzir citações apagadas ao sincronizar ou migrar dados.
 - Preserve o modal compartilhado das informações de leitura, o fichário de abas pastel, a leitura centralizada das citações e o caderno pautado de resenha com som opcional.
-- No Diário, salvar ou cancelar o caderno fecha também a capa 3D e retorna ao estado inicial do Diário. A capa deve manter dimensões compatíveis em telas pequenas; não remover fallbacks de tamanho sem validar o comportamento.
+- No Diário, o fluxo da resenha segue o MVP 1: capa → contracapa (flip automático ~260ms, interativa após o giro) → folha do caderno com a capa encaixada acima (`cad-cover`). Salvar ou fechar a folha retorna à contracapa; só o Fechar da contracapa (X, clique fora ou Esc) volta ao Diário. A capa deve manter dimensões compatíveis em telas pequenas; não remover fallbacks de tamanho sem validar o comportamento.
 
 ## Verificação
 

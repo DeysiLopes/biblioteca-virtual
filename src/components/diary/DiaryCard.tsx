@@ -48,6 +48,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         onClick={() => onOpenCover(book)}
         title="Virar o livro em 3D"
         style={{
+          position: 'relative',
+          display: 'block',
           width: 68,
           height: 98,
           flexShrink: 0,
@@ -66,11 +68,14 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             {
               '--g1': fb.g1,
               '--g2': fb.g2,
+              position: 'relative',
               width: '100%',
               height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: 'inherit',
             } as React.CSSProperties
           }
         >
@@ -81,6 +86,14 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             <img
               src={book.cover}
               alt={book.title}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: 'inherit',
+              }}
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}

@@ -416,12 +416,16 @@ Roadmap completo em `todo.md`. Itens prioritários:
 
 ### Atualização da migração React (2026-10-12)
 
-- O fluxo Diário → capa 3D → caderno de resenha agora fecha o caderno e a capa 3D após
-  salvar, retornando ao estado inicial do Diário.
+- Fluxo da resenha igual ao MVP 1: a capa abre centralizada no Diário, vira sozinha para
+  a contracapa (~260ms) e fica interativa após o giro (~820ms, `ready`). Clique na capa ou
+  no botão sobe o caderno, com a capa encaixada acima da folha (`cad-cover`/`coverDock`).
+- Salvar ou fechar a folha retorna à **contracapa** (o `FlipBook` continua montado,
+  `isOpen=false` enquanto o caderno está aberto, preservando `flipped`/`ready`).
+  Só o "Fechar" da contracapa (X, clique fora ou Esc) retorna ao Diário.
 - A capa 3D recebeu dimensões compatíveis (`width`/`height` com fallback para `vh`) para
   não expandir até ocupar a página em navegadores que não interpretam `dvh` dentro de `min()`.
 - O fluxo possui teste de regressão em `src/test/diary-review.test.tsx`; a suíte atual passa
-  com 23 testes.
+  com 24 testes.
 
 ---
 

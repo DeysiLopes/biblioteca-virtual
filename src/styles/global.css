@@ -231,6 +231,10 @@
   .nbook .fbmini{ display:flex; align-items:center; justify-content:center; font:800 12px "Cormorant Garamond",serif; color:oklch(0.2 0 0 / .85); background:linear-gradient(150deg,var(--g1),var(--g2)); }
   .coverbtn{ background:none; border:none; padding:0; margin:0; flex:none; cursor:pointer; display:block; line-height:0; }
   .nbook .cwrap{ position:relative; display:block; width:40px; height:58px; flex:none; border-radius:3px 7px 7px 3px; overflow:hidden; box-shadow:0 6px 12px -6px oklch(0 0 0 / .5); }
+  /* a capa do cartão precisa ser o bloco de contenção do .fallback (absolute) */
+  .nbook .coverbtn{ position:relative; }
+  .nbook .cover-wrap{ position:relative; overflow:hidden; }
+  .nbook .cover-wrap img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .nbook .cwrap img, .nbook .cwrap .fbmini{ position:absolute; inset:0; width:100%; height:100%; border-radius:0; box-shadow:none; }
   .nbook .bd{ flex:1; min-width:0; }
   .nbook .bt{ font:700 13.5px; }
@@ -373,7 +377,7 @@
   /* ---- virar a capa (contracapa / resenha) ---- */
   #flipview{ position:fixed; inset:0; z-index:88; display:none; background:oklch(0.15 0.03 35 / .62); backdrop-filter:blur(7px); align-items:center; justify-content:center; padding:20px; }
   #flipview.open{ display:flex; }
-  .flip-book{ width:min(70vw,300px,48dvh); aspect-ratio:2/3; perspective:1500px; cursor:pointer; }
+  .flip-book{ width:min(70vw,300px); height:min(72vh,450px); max-width:300px; max-height:450px; aspect-ratio:2/3; perspective:1500px; cursor:pointer; }
   .flip-book:focus-visible{ outline:2px solid var(--accent); outline-offset:8px; }
   #flipview.open{ animation:leituraIn .25s ease both; }
   .flip-inner{ position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform .8s cubic-bezier(.5,.05,.3,1); }
