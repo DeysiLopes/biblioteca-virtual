@@ -11,12 +11,13 @@
 ## Organização do código
 
 - `src/main.tsx`: inicialização React, `BrowserRouter` com `import.meta.env.BASE_URL` e registro do PWA em produção.
-- `src/App.tsx`: composição e rotas. `/` e `/estante` abrem a Estante; `/diario` é o Diário; `/dashboard` redireciona para `/diario`; `/books` é o cadastro/importação; `/fichario` contém citações; `/caderno/:livroId` abre a resenha.
+- `src/App.tsx`: composição e rotas. `/` e `/estante` abrem a Estante; `/diario` é o Diário; `/dashboard` redireciona para `/diario`; `/books` é o cadastro/importação (aba "🎬 Scan de reel" é a principal); `/citacoes` contém as citações (`/fichario` redireciona); `/caderno/:livroId` abre a resenha.
 - `src/pages/` e `src/components/`: páginas, componentes e interação visual. Siga as convenções dos componentes existentes antes de criar novos.
-- `src/hooks/useLibrary.ts`, `useAuth.ts` e `useSound.ts`: integração da interface com biblioteca, autenticação e áudio.
-- `src/core/models/`: tipos de livros, entradas do diário e `UserLibraryData`.
-- `src/core/business/`: regras de progresso, dashboard, citações, parser CSV/JSON e consulta Open Library. Mantenha essas regras testáveis, sem duplicá-las nos componentes.
-- `src/core/storage/`: IndexedDB, Google Drive, migração dos dados antigos e `LibrarySyncManager`/`syncManager`.
+- `src/hooks/useLibrary.ts`, `useAuth.ts`, `useSound.ts` e `useBookCoverUrl.ts`: integração da interface com biblioteca, autenticação, áudio e resolução de capas.
+- `src/core/models/`: tipos de livros, entradas do diário e `UserLibraryData`. `Book` inclui `coverFileId` (capa no Drive) e `filaPosicao` (fila "Quero ler").
+- `src/core/business/`: regras de progresso, dashboard, citações, fila (`queue.ts`), parser CSV/JSON e consulta Open Library. Mantenha essas regras testáveis, sem duplicá-las nos componentes.
+- `src/core/business/llm/`: scan de reels — `types`, `prompt`, `parse`, `providers` (Gemini/OpenAI/Anthropic), `frames` (extração `<video>`+canvas), `reel-link` (Jina + proxies) e `extract` (orquestração/config). Sem chamadas diretas a LLM fora dessa camada.
+- `src/core/storage/`: IndexedDB (v2: `books`, `diary`, `meta`, `covers`), Google Drive, `cover-cache.ts`, migração dos dados antigos e `LibrarySyncManager`/`syncManager`.
 - `src/core/auth/google-auth.ts`: Google Identity Services (GIS).
 - `src/core/broadcast/channel.ts`: comunicação entre abas.
 - `src/styles/global.css`: identidade visual e animações. Referências visuais em `identidade-visual/`, incluindo `citacoes-design.jpg`.
@@ -24,15 +25,16 @@
 
 ## Estado, persistência e sincronização
 
-- A biblioteca usa memória, IndexedDB (`books`, `diary`, `meta`) e Google Drive. Alterações da interface devem passar por `useLibrary`/`syncManager`, não por cópias independentes de estado ou gravações paralelas improvisadas.
+- A biblioteca usa memória, IndexedDB (`books`, `diary`, `meta`, `covers`) e Google Drive. Alterações da interface devem passar por `useLibrary`/`syncManager`, não por cópias independentes de estado ou gravações paralelas improvisadas.
 - Preserve a gravação atômica de livro e entrada do diário em `persistBookAndDiaryAtomic`, quando houver registro de leitura.
-- A nuvem atual é Google Drive REST API v3: arquivo `biblioteca-<userId>.json` na pasta "Minha Biblioteca", com dados no formato `UserLibraryData`. O sync por GitHub Contents API é legado, não o mecanismo a estender na nova arquitetura.
+- A nuvem atual é Google Drive REST API v3: arquivo `biblioteca-<userId>.json` na pasta "Minha Biblioteca", com dados no formato `UserLibraryData`. Capas ficam em `Minha Biblioteca/capas/` (`<isbn>.jpg` ou `book-<id>.jpg`), referenciadas por `book.coverFileId` e cacheadas na store `covers` — ver `cover-cache.ts`. O sync por GitHub Contents API é legado, não o mecanismo a estender na nova arquitetura.
 - `migration.ts` e o carregamento inicial podem aproveitar `books.json`/`data/sync.json` antigos quando disponíveis. Esses arquivos não são a fonte principal de persistência nem devem ser limpos como tentativa de corrigir sincronização.
 - O gerenciador agenda envio ao Drive e publica eventos `LIBRARY_UPDATED`. Entre abas, use o canal `biblioteca-sync` e o fallback de evento `storage`; preserve inscrições e limpeza dos listeners.
 - Ao alterar sync, teste pull, push, concorrência, campos vazios e exclusões entre clientes. A presença de `deletedCitacoes` no modelo não comprova, sozinha, que todas as corridas de merge estão cobertas.
 - O backup atual é JSON, pelo fluxo `exportDriveBackup`, com nome `biblioteca-<userId>.json` ou identificação offline. Não tratá-lo como exportação CSV nem presumir que ele consulta a nuvem no momento do download.
 - GIS usa access token e escopo `drive.file`, sem segredo OAuth ou refresh token no cliente. `VITE_GOOGLE_CLIENT_ID` identifica a aplicação; quando não configurado, o código oferece modo mock, com dados de Drive simulados em armazenamento local.
 - Nunca incluir access tokens, chaves secretas ou segredos OAuth em código, logs, testes, backups ou commits. O client ID público não é um segredo; não serialize `AuthState` dentro de `UserLibraryData`.
+- A API key do LLM do scan (`meta` `llmProvider`/`llmApiKey`) é **local-only**: nunca vai para `UserLibraryData`, Drive, backups ou logs. Fallbacks dev: `VITE_LLM_PROVIDER`/`VITE_LLM_API_KEY`/`VITE_GEMINI_API_KEY` no `.env` (gitignored).
 - Não usar dados pessoais reais em código, logs, fixtures de testes ou commits. Backups solicitados pela pessoa usuária podem conter os próprios dados da biblioteca, mas não tokens de autenticação. Respeite o `.gitignore`, que exclui dados pessoais, `.env` locais, `node_modules/`, `dist/` e `bugs/`.
 - Testes devem usar mocks e dados isolados. Não autenticar, criar arquivos, sobrescrever biblioteca real no Drive nem enviar dados de teste à nuvem sem autorização explícita. Testes mock não substituem validação real de login e sync entre aparelhos.
 
@@ -43,7 +45,10 @@
 - O dashboard usa `computeDashboardSummary`/`getDashboardEntries`, limita as contribuições ao progresso atual e ignora epochs anteriores. Livro com zero páginas não pontua; reset de um livro não apaga a atividade dos demais.
 - Os livros com status "Lido" ficam nas prateleiras do final da Estante, mas continuam acessíveis. Filtros e busca alteram a visualização, não os dados dos livros.
 - Citações exigem texto e página maior que zero. Use as regras de `quotes.ts`; editar preserva `id` e `ts`, e excluir mantém o ID em `deletedCitacoes`. Não reintroduzir citações apagadas ao sincronizar ou migrar dados.
-- Preserve o modal compartilhado das informações de leitura, o fichário de abas pastel, a leitura centralizada das citações e o caderno pautado de resenha com som opcional.
+- O modal de Citações (`CitacoesModal`) ordena por `page` ascendente; a navegação usa a cascata de folhas do MVP 1 com som (`playPageTurn`); edição reusa a cara do caderno de resenha.
+- A fila "Quero ler" é ordenada por `book.filaPosicao` (`queue.ts`): arrastar para "Lendo" muda status; arrastar para "Quero ler" põe no topo; sair da fila grava `null`. Livro completo não regredde de "Lido".
+- Livros vindos do scan de reels entram como `status: 'Quero ler'` e passam por `saveBatch` + `enrichBooksInBackground` — não gravar direto no IndexedDB nem duplicar a regra de dedupe fora da camada `llm/`+UI.
+- Preserve o modal compartilhado das informações de leitura, a página de leitura das citações e o caderno pautado de resenha com som opcional.
 - No Diário, o fluxo da resenha segue o MVP 1: capa → contracapa (flip automático ~260ms, interativa após o giro) → folha do caderno com a capa encaixada acima (`cad-cover`). Salvar ou fechar a folha retorna à contracapa; só o Fechar da contracapa (X, clique fora ou Esc) volta ao Diário. A capa deve manter dimensões compatíveis em telas pequenas; não remover fallbacks de tamanho sem validar o comportamento.
 
 ## Verificação

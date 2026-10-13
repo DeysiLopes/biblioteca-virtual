@@ -3,7 +3,7 @@
 Documento de contexto do projeto **Minha Biblioteca** (PWA de estante + diário de leitura),
 com histórico do que foi feito, arquitetura, decisões e estado atual.
 
-Última atualização: 2026-10-12 (após deploy `bib-v25`).
+Última atualização: 2026-10-13 (scan de reels com IA por link; ver seção 16).
 
 ---
 
@@ -478,3 +478,92 @@ Em 2026-10-12, a aplicação foi migrada de SPA vanilla para **React 18 + Vite +
 
 6. **Testes Automatizados**:
    - 22 testes unitários e de integração em **Vitest + React Testing Library** (`npm run test`) cobrindo progresso, regras de readingEpoch, streak do dashboard, fichário, parser CSV/JSON e componentes React.
+
+---
+
+## 16. MVP 2 — Evolução de 2026-10-13
+
+### 16.1 Modal do livro (paridade com MVP 1)
+
+- `BookModal` recuperou a capa animada do MVP 1: ao clicar num livro, a capa "voa" do
+  card até o lado esquerdo do painel (desktop) ou acima da folha (mobile), e volta ao
+  fechar. Estante, Diário e Dashboard passam o rect de origem.
+- Campo "Sua nota" com 5 estrelas clicáveis persiste `book.nota` junto ao salvar.
+- Cor das estrelas apagadas ajustada para dourado visível no tema escuro.
+
+### 16.2 Citações (ex-Fichário)
+
+- "Fichário" virou **Citações**: rota `/citacoes` (`/fichario` redireciona), menu
+  "💬 Citações". `CitacoesModal` substituiu `FicharioModal`/`QuoteReader`.
+- A página de leitura é a cara principal: citações **ordenadas por `page` ascendente**,
+  navegação por setas ‹ › (também teclado) com contador "N de M".
+- Animação em cascata do MVP 1: avançar vira a folha atual + 2 folhas em branco para a
+  esquerda (`rotateY` na lombada, delays 140/280ms); voltar espelha. `backface-visibility`
+  esconde a folha após 90°; `prefers-reduced-motion` desativa.
+- Ferramentas discretas no canto inferior esquerdo: editar ✎, nova ＋, excluir 🗑 e
+  **som 🔊** (`playPageTurn` no `useSound` — whoosh de papel via Web Audio, mesma
+  configuração do som da máquina de escrever).
+- Edição/criação usa a mesma cara do caderno de resenha (papel pautado, Courier, som).
+
+### 16.3 Cache de capas no Google Drive
+
+- Pasta `Minha Biblioteca/capas/` no Drive: um arquivo por capa, nome `<isbn>.jpg` ou
+  `book-<id>.jpg`. `book.coverFileId` aponta o arquivo e sincroniza no JSON normal.
+- IndexedDB **v2** ganhou a store `covers` (blob local — leitura offline e sem refazer
+  download do Drive).
+- Resolução (`src/core/storage/cover-cache.ts` + `useBookCoverUrl`): memória →
+  IndexedDB → Drive → URL remota (Open Library). Em background, capa remota nova é
+  baixada, salva local, enviada ao Drive e `coverFileId` gravado no livro — dedup de
+  uploads, ignora GIF 1×1 da OL, nunca quebra a estante em caso de falha.
+- `needsMetadata` trata `coverFileId` como capa já encontrada. `resetLocalData` limpa o
+  cache. `useBookCoverUrl` é usado por BookCard, BookModal, FlipBook, DiaryCard e
+  ReviewNotebook (chamado antes de retornos condicionais, tolera `book` nulo).
+
+### 16.4 Estante: seções por status + fila de leitura
+
+- Prateleiras numeradas viraram seções fixas: **Lendo agora → Quero ler → Lidos →
+  Abandonados**. Botões de status rolam até a seção (`scroll-margin-top` pelo header
+  sticky). Filtros: dropdowns de **Gênero** e **Autor** (valores presentes na biblioteca).
+- `book.filaPosicao` ordena a fila "Quero ler" (menor = topo; `null` = fora da fila).
+  Persiste no IndexedDB e no JSON do Drive como parte do `Book`.
+- **Drag-and-drop**: arrastar para "Lendo agora" muda `status` para Lendo (via
+  `applyBookProgressUpdate`); arrastar para "Quero ler" põe o livro no topo da fila.
+  Livro completo não regredde de Lido. No mobile, o modal oferece
+  "📌 Colocar no topo da fila" (`src/core/business/queue.ts`).
+
+### 16.5 Scan de reels com IA (`/books`, aba principal)
+
+- Aba "🎬 Scan de reel" é a **primeira e padrão** em `/books`; `ReelScanner` em
+  `src/components/scan/`. Fluxo: link → revisão com checkboxes → dedupe por título
+  normalizado ("já na biblioteca") → salva como `status: 'Quero ler'` → enriquece
+  ISBN/capa em background por `enrichBooksInBackground`.
+- **Por link (caminho principal)**: `resolveReelLink` busca a página via
+  **`r.jina.ai`** (reader da Jina AI, CORS liberado, devolve legenda + capa em JSON).
+  A legenda vai ao LLM como **texto** (`CAPTION_EXTRACTION_PROMPT` +
+  `callLLMCaption`), com a capa do post (via `images.weserv.nl`, CORS aberto) como
+  frame extra. Reels de bookstagram costumam listar os livros na legenda — verificado
+  com link real (4 livros identificados).
+- **Fallbacks**: sem legenda útil → `video_url`/`og:image` do HTML via proxies públicos
+  (cors.lol → allorigins → codetabs — instáveis) → frames pelo pipeline de visão;
+  upload de vídeo/prints continua como alternativa na mesma aba
+  (`extractFramesFromVideo`/`Images`, `<video>`+canvas, ~8 frames, 768px JPEG).
+- **Camada LLM** (`src/core/business/llm/`): `types`, `prompt`, `parse` (JSON/fenced/
+  texto extra), `providers` (Gemini, OpenAI, Anthropic — adaptadores com formatos de
+  imagem próprios), `frames` (extração `<video>`+canvas e blobs), `reel-link`
+  (parse de URL, Jina, proxies), `extract` (orquestração + config).
+- **Config**: provedor + API key na UI do scan; salvos só no IndexedDB `meta`
+  (`llmProvider`/`llmApiKey` — **nunca** no `UserLibraryData`/Drive). `.env` como
+  fallback dev: `VITE_LLM_PROVIDER`, `VITE_LLM_API_KEY`, `VITE_GEMINI_API_KEY` (legado).
+- Suporte a YouTube shorts/vídeos (thumbnail `i.ytimg.com` direta, CORS `*`) e a links
+  de Instagram `/reel/`, `/reels/`, `/p/`.
+
+### 16.6 Pendente: proxy próprio para frames do vídeo
+
+- Instagram não permite fetch direto (CORS) e a API oficial não entrega mídia de
+  terceiros (`instagram_oembed` só dá HTML de embed; Graph API só a própria conta).
+  Para ler os **frames do vídeo** (reels sem livros na legenda) falta um proxy
+  confiável — os públicos falham e `corsproxy.org` devolve conteúdo adulterado
+  (removido da cadeia).
+- Próximo passo documentado em `todo.md`: **Cloudflare Worker** (~30 linhas, allowlist
+  de hosts) configurável via `VITE_REEL_PROXY`/meta `reelProxy`, tentado antes dos
+  proxies públicos em `fetchViaProxy`/`fetchImage`.

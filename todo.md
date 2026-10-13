@@ -2,6 +2,48 @@
 
 Status: execução iniciada em 2026-10-12 pelas correções do app. CSV, IA/vídeos e funcionalidades complementares continuam pendentes; a integração por ISBN ficará por último e exige estudo separado.
 
+## Status atual — Scan de reels com IA (implementado em 2026-10-13)
+
+**Feito e verificado:** aba "🎬 Scan de reel" é a primeira em `/books`. O fluxo por **link** funciona:
+
+```
+link → r.jina.ai (legenda + capa, CORS liberado) → LLM-texto → revisão → "Quero ler" → enriquece ISBN/capa
+        └ falhou? → proxy CORS → video_url/og:image → frames → LLM-visão
+             └ falhou? → upload de vídeo/prints (alternativa na mesma aba)
+```
+
+- Verificado com link real de reel: legenda com livros → 4 livros identificados, dedupe "já na biblioteca" ✓
+- Reel sem livros na legenda → usa a **capa** (via `images.weserv.nl`, CORS ok) como frame; só 1 imagem, marcas `uncertain` quando a leitura é incerta
+- Chave do LLM (Gemini/OpenAI/Claude) fica no campo da UI ou `VITE_LLM_API_KEY`/`VITE_GEMINI_API_KEY` no `.env`; salva só no IndexedDB `meta`, nunca no Drive
+- 90 testes, build e `git diff --check` limpos. Arquivos: `src/core/business/llm/*` e `src/components/scan/ReelScanner.tsx`
+
+### ⭐ Próximo passo: Cloudflare Worker próprio (a peça que falta)
+
+**Por quê:** para reels que só mostram os livros no vídeo (sem legenda), a IA hoje lê apenas a **capa**. Os frames do mp4 precisam do `video_url`, que só vem via proxy — e os proxies públicos (allorigins/cors.lol/codetabs) estavam todos fora do ar em 2026-10-13; o `corsproxy.org` devolve conteúdo adulterado (removido da cadeia).
+
+**O que fazer:**
+
+- [ ] Criar conta/projeto no Cloudflare (plano free, 100k req/dia) e publicar um Worker de ~30 linhas que recebe `?url=`, busca o HTML (com `User-Agent` de browser) e devolve com `Access-Control-Allow-Origin: *`
+- [ ] Reaproveitar o Worker também para baixar o `video_url` (mp4) e a capa `scontent*.cdninstagram.com` — bytes passam direto com CORS
+- [ ] Salvar a URL do worker em `VITE_REEL_PROXY` (`.env`, dev) e via meta `reelProxy` (config do usuário) — `fetchViaProxy`/`fetchImage` devem tentar o worker antes dos proxies públicos (`src/core/business/llm/reel-link.ts`)
+- [ ] Opcional: restringir o worker a um allowlist de hosts (`instagram.com`, `cdninstagram.com`, `fbcdn.net`, `ytimg.com`) para não virar proxy aberto
+- [ ] Testar de verdade com o reel `https://www.instagram.com/reel/DeVKPZyympI/` (livros só no vídeo) — esperado: `video_url` → mp4 → ~8 frames → LLM lê os títulos
+
+**Rascunho do worker (colar no editor do Cloudflare):**
+
+```js
+export default {
+  async fetch(req) {
+    const url = new URL(req.url).searchParams.get('url');
+    const ok = url && /(^|\.)(instagram\.com|cdninstagram\.com|fbcdn\.net|ytimg\.com)$/.test(new URL(url).hostname);
+    const headers = { 'Access-Control-Allow-Origin': '*' };
+    if (!ok) return new Response('host não permitido', { status: 403, headers });
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36' } });
+    return new Response(res.body, { status: res.status, headers: { ...headers, 'content-type': res.headers.get('content-type') ?? 'application/octet-stream' } });
+  },
+};
+```
+
 ## Retomar esta sessão
 
 Para continuar amanhã na mesma sessão do Devin, execute na pasta do projeto:
