@@ -174,7 +174,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           </div>
         </div>
 
-        {/* Botão para abrir o fichário de citações */}
+        {/* Botão para abrir as citações */}
         <div style={{ marginTop: 10 }}>
           <button
             type="button"
@@ -194,7 +194,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
               gap: 6,
             }}
           >
-            <span>📑 Fichário de citações ({quotesCount})</span>
+            <span>💬 Citações ({quotesCount})</span>
           </button>
         </div>
       </div>

@@ -29,7 +29,8 @@ export const App: React.FC = () => {
           <Route path="/diario" element={<DiaryPage />} />
           <Route path="/dashboard" element={<Navigate to="/diario" replace />} />
           <Route path="/books" element={<AddBookPage />} />
-          <Route path="/fichario" element={<QuotesPage />} />
+          <Route path="/citacoes" element={<QuotesPage />} />
+          <Route path="/fichario" element={<Navigate to="/citacoes" replace />} />
           <Route path="/caderno/:livroId" element={<ReviewPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

@@ -68,9 +68,53 @@ export function useSound() {
     key.start(now);
   }, [soundEnabled, ensureCtx]);
 
+  // "Whoosh" de folha virando: ruído com envelope sobe→desce e
+  // bandpass varrendo grave→agudo→grave, como o atrito do papel
+  const playPageTurn = useCallback(async () => {
+    if (!soundEnabled) return;
+    const ctx = await ensureCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const duration = 0.42;
+    const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
+    const samples = buffer.getChannelData(0);
+
+    for (let i = 0; i < samples.length; i++) {
+      const t = i / samples.length;
+      const env = Math.sin(Math.PI * Math.min(t * 1.25, 1));
+      const flutter = 0.8 + 0.2 * Math.sin(i * 0.11);
+      samples[i] = (Math.random() * 2 - 1) * env * flutter;
+    }
+
+    const src = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const volume = ctx.createGain();
+
+    src.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.Q.value = 0.8;
+    filter.frequency.setValueAtTime(400, now);
+    filter.frequency.exponentialRampToValueAtTime(2600, now + duration * 0.45);
+    filter.frequency.exponentialRampToValueAtTime(600, now + duration);
+    volume.gain.value = 0.32;
+
+    src.connect(filter);
+    filter.connect(volume);
+    volume.connect(ctx.destination);
+
+    src.onended = () => {
+      src.disconnect();
+      filter.disconnect();
+      volume.disconnect();
+    };
+
+    src.start(now);
+  }, [soundEnabled, ensureCtx]);
+
   return {
     soundEnabled,
     toggleSound,
     playTypewriterKey,
+    playPageTurn,
   };
 }

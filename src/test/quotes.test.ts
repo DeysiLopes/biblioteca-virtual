@@ -6,7 +6,7 @@ import {
 } from '../core/business/quotes';
 import { Book } from '../core/models/book';
 
-describe('Regras de Negócio — Citações e Fichário', () => {
+describe('Regras de Negócio — Citações', () => {
   const sampleBook: Book = {
     id: 'b1',
     title: 'Capitu',

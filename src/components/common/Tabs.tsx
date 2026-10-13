@@ -31,10 +31,10 @@ export const Tabs: React.FC = () => {
       </NavLink>
 
       <NavLink
-        to="/fichario"
+        to="/citacoes"
         className={({ isActive }) => (isActive ? 'active' : '')}
       >
-        <span>📑 Fichário</span>
+        <span>💬 Citações</span>
       </NavLink>
     </nav>
   );

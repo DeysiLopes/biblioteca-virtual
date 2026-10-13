@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
 import { Book } from '../core/models/book';
-import { FicharioModal } from '../components/quotes/FicharioModal';
+import { CitacoesModal } from '../components/quotes/CitacoesModal';
 
 export const QuotesPage: React.FC = () => {
   const { books, saveBook } = useLibrary();
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
-  // Derivado da lista — o fichário enxerga novas fichas sem reabrir
+  // Derivado da lista — o modal enxerga novas citações sem reabrir
   const selectedBook = selectedBookId
     ? books.find((b) => b.id === selectedBookId) ?? null
     : null;
@@ -19,7 +19,7 @@ export const QuotesPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h2 className="serif" style={{ fontSize: 28, margin: 0, color: 'var(--ink)' }}>
-            📑 Fichário de Citações
+            💬 Citações
           </h2>
           <p style={{ margin: '4px 0 0', color: 'var(--ink2)', fontSize: 14 }}>
             Explore e anote passagens memoráveis de cada livro.
@@ -29,7 +29,7 @@ export const QuotesPage: React.FC = () => {
 
       <div style={{ marginBottom: 24 }}>
         <label htmlFor="bookSelect" style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ink2)', marginBottom: 6 }}>
-          Selecione um livro para abrir no fichário:
+          Selecione um livro para abrir as citações:
         </label>
         <select
           id="bookSelect"
@@ -101,19 +101,19 @@ export const QuotesPage: React.FC = () => {
                   alignSelf: 'flex-start',
                 }}
               >
-                Abrir fichário →
+                Ver citações →
               </button>
             </div>
           ))}
         </div>
       ) : (
         <p style={{ color: 'var(--ink2)', fontStyle: 'italic', textAlign: 'center', padding: '40px 0' }}>
-          Nenhuma citação cadastrada ainda. Selecione um livro acima para adicionar a primeira ficha!
+          Nenhuma citação cadastrada ainda. Selecione um livro acima para escrever a primeira citação!
         </p>
       )}
 
       {selectedBook && (
-        <FicharioModal
+        <CitacoesModal
           book={selectedBook}
           isOpen={true}
           onClose={() => setSelectedBookId(null)}

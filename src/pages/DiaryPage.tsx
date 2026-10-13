@@ -7,7 +7,7 @@ import { DiaryCard } from '../components/diary/DiaryCard';
 import { BookModal } from '../components/book/BookModal';
 import { FlipBook } from '../components/book/FlipBook';
 import { ReviewNotebook, CoverOrigin } from '../components/review/ReviewNotebook';
-import { FicharioModal } from '../components/quotes/FicharioModal';
+import { CitacoesModal } from '../components/quotes/CitacoesModal';
 
 export const DiaryPage: React.FC = () => {
   const { books, summary, saveBook } = useLibrary();
@@ -176,7 +176,7 @@ export const DiaryPage: React.FC = () => {
       )}
 
       {quotesBook && (
-        <FicharioModal
+        <CitacoesModal
           book={quotesBook}
           isOpen={true}
           onClose={() => setQuotesBookId(null)}
