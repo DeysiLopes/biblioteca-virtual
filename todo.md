@@ -29,15 +29,11 @@ link → r.jina.ai (legenda + capa, CORS liberado)
 - Chave do LLM (Gemini/OpenAI/Claude) fica no campo da UI ou `VITE_LLM_API_KEY`/`VITE_GEMINI_API_KEY` no `.env`; salva só no IndexedDB `meta`, nunca no Drive
 - 90 testes, build e `git diff --check` limpos. Arquivos: `src/core/business/llm/*` e `src/components/scan/ReelScanner.tsx`
 
-### ⭐ Próximo passo: publicar o Cloudflare Worker (única ação manual restante)
+### ✅ Cloudflare Worker publicado (2026-10-13)
 
-**Estado:** o código está pronto dos dois lados — `workers/reel-proxy.js` no repo e o app já o tenta primeiro na cadeia (`reelProxy`/`VITE_REEL_PROXY`). Só falta publicar o worker na conta Cloudflare da pessoa usuária — ~5 min, sem código:
+Worker live, deploy automático via Workers Builds conectado ao repo (`wrangler.toml` na raiz, `main = workers/reel-proxy.js`). **A URL não fica no código**: vem do secret `VITE_REEL_PROXY` no GitHub Actions (injetado no build em `react-vite.yml`) ou do `.env` local em dev; meta `reelProxy` segue como override por aparelho. ⚠️ Pendente: criar o secret `VITE_REEL_PROXY` no repo (Settings → Secrets and variables → Actions) com a URL do worker publicado. Verificado: ytimg 200 + CORS `*` ✓, allowlist bloqueia hosts fora da lista ✓.
 
-1. [ ] `dash.cloudflare.com` → Workers & Pages → Create Worker
-2. [ ] Colar o conteúdo de `workers/reel-proxy.js` no editor → **Deploy**
-3. [ ] Copiar a URL publicada (`https://reel-proxy.<sub>.workers.dev`)
-4. [ ] Colar a URL em `DEFAULT_REEL_PROXY` em `src/core/business/llm/reel-link.ts` — a partir daí funciona pra todo mundo, invisível, sem campo na tela
-5. [ ] Testar de verdade com o reel `https://www.instagram.com/reel/DeVKPZyympI/` (livros só no vídeo) — esperado: `video_url` → mp4 → ~8 frames → LLM lê os títulos, não só a capa
+**Limitação observada:** o Instagram responde **429** pra chamadas vindas de IPs de datacenter (Cloudflare) — o HTML da página do reel ainda não vem de forma confiável por esse caminho. O worker segue útil (capas CDN, ytimg, e tentativas ocasionais que passam), mas o `video_url` do Instagram pode continuar dependendo de sorte. O caminho principal (Jina legenda → parser local → LLM) não é afetado.
 
 ### ✅ Citação do dia ("frase do dia") — implementada
 

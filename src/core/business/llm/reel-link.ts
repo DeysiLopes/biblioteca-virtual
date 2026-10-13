@@ -17,20 +17,16 @@ export interface ResolvedReel {
 const META_REEL_PROXY = 'reelProxy';
 
 /**
- * Proxy próprio (Cloudflare Worker, workers/reel-proxy.js) — depois do
- * deploy na conta da dona do app, a URL publicada entra aqui e o proxy
- * funciona pra todo mundo, invisível, sem configuração nenhuma na tela.
- * Meta `reelProxy` e `VITE_REEL_PROXY` continuam como override para dev
- * e para quem hospeda a própria instância do app.
+ * Proxy próprio (Cloudflare Worker, workers/reel-proxy.js) — estável e
+ * dedicado. A URL não fica no código: entra via `VITE_REEL_PROXY` (secret
+ * do GitHub injetado no build do deploy; `.env` local em dev) ou via meta
+ * `reelProxy` (override por aparelho). Configurado, é tentado antes dos
+ * proxies públicos.
  */
-const DEFAULT_REEL_PROXY = ''; // ex.: 'https://reel-proxy.deysilopes.workers.dev'
-
 async function workerProxyUrl(url: string): Promise<string | null> {
   const meta = (await getMetaValue<string>(META_REEL_PROXY))?.trim();
   const base =
-    meta ||
-    (import.meta.env.VITE_REEL_PROXY as string | undefined)?.trim() ||
-    DEFAULT_REEL_PROXY;
+    meta || (import.meta.env.VITE_REEL_PROXY as string | undefined)?.trim();
   if (!base) return null;
   return `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(url)}`;
 }
