@@ -25,19 +25,6 @@
     <title>Minha Biblioteca</title>
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <!-- SPA 404 redirect unpacker -->
-    <script type="text/javascript">
-      (function(l) {
-        if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) {
-            return s.replace(/~and~/g, '&');
-          }).join('?');
-          window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + decoded + l.hash
-          );
-        }
-      }(window.location));
-    </script>
     <!-- Recuperação de cache: recarrega se o app não montar (módulos 404/504) ou
          se um chunk dinâmico falhar, buscando a versão nova. Trava anti-loop. -->
     <script type="text/javascript">
