@@ -12,7 +12,7 @@ export const LLM_PROVIDERS: LLMProviderInfo[] = [
   {
     id: 'gemini',
     label: 'Google Gemini',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3.8-flash',
     keyHint: 'AIza...',
     keyUrl: 'https://aistudio.google.com/app/apikey',
   },
