@@ -41,7 +41,7 @@ PWA de estante + diário de leitura — **React 18 + Vite + TypeScript**, sincro
 
 ```bash
 npm install
-npm run dev        # Vite dev server (localhost:5173/biblioteca-virtual/)
+npm run dev        # Vite dev server (localhost:5173)
 npm test           # Vitest + React Testing Library + fake-indexeddb
 npm run build      # tsc + build + service worker (vite-plugin-pwa)
 npm run preview    # serve o dist/ localmente
@@ -53,7 +53,7 @@ npm run preview    # serve o dist/ localmente
 git push origin main
 ```
 
-O workflow `.github/workflows/react-vite.yml` roda testes, builda o `dist/` e publica no GitHub Pages (fonte do Pages = **GitHub Actions**). O build usa o secret `VITE_GOOGLE_CLIENT_ID` para habilitar o login Google no site publicado.
+O app é publicado no **Cloudflare Pages** em https://biblioteca-virtual.pages.dev/ — o projeto conectado ao repo rebuilda e publica a cada push na `main` (build `npm run build`, saída `dist`, env vars `VITE_BASE_PATH=/`, `VITE_SITE_URL`, `VITE_GOOGLE_CLIENT_ID` e `VITE_REEL_PROXY`). O GitHub Pages foi aposentado; o workflow `.github/workflows/react-vite.yml` virou só CI (testes + build de validação).
 
 ## Estrutura
 
@@ -62,9 +62,9 @@ O workflow `.github/workflows/react-vite.yml` roda testes, builda o `dist/` e pu
 - `src/core/` — `models/` (Book, diário, UserLibraryData), `business/` (progresso, citações, CSV, Open Library, share), `storage/` (IndexedDB, Drive, sync-manager), `auth/` (GIS), `broadcast/` (abas)
 - `src/hooks/` — `useLibrary`, `useAuth`, `useSound`
 - `src/test/` — suíte Vitest/RTL
-- `public/` — ícones PWA, favicon e `404.html` (redirect SPA no GitHub Pages)
+- `public/` — ícones PWA, favicon e `_redirects` (fallback SPA no Cloudflare Pages)
 - `identidade-visual/` — referências visuais (somente local)
-- `vite.config.ts` — base `/biblioteca-virtual/`, manifest e workbox do PWA
+- `vite.config.ts` — base via `VITE_BASE_PATH` (padrão `/`), manifest e workbox do PWA
 - `AGENTS.md` / `CONTEXT.md` — orientações e histórico de decisões
 
 ## Apoie o projeto ☕

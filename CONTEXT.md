@@ -19,7 +19,7 @@ com histórico do que foi feito, arquitetura, decisões e estado atual.
 ### URLs e repositório
 
 - Repositório: `DeysiLopes/biblioteca-virtual` (branch `main`, app na raiz do repo).
-- App publicado: https://deysilopes.github.io/biblioteca-virtual/
+- App publicado: https://biblioteca-virtual.pages.dev/ (Cloudflare Pages; o GitHub Pages `deysilopes.github.io/biblioteca-virtual/` foi desativado)
 - Sync cru (sem cache, para leitura):
   `https://raw.githubusercontent.com/DeysiLopes/biblioteca-virtual/main/data/sync.json`
 - Sync (escrita via API):
@@ -399,7 +399,7 @@ node --check /tmp/opencode/check.js && echo "JS OK"
 node --check /tmp/opencode/check.js
 
 # ver versão do SW publicada
-curl -s "https://deysilopes.github.io/biblioteca-virtual/sw.js?v=$(date +%s)" | grep VERSION
+curl -s "https://biblioteca-virtual.pages.dev/sw.js?v=$(date +%s)" | grep VERSION
 
 # limpar cache local (no navegador): botão #swReset ou Ctrl+Shift+R
 ```
