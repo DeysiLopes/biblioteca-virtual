@@ -1,6 +1,7 @@
 import React from 'react';
 import { Book } from '../../core/models/book';
-import { getBookFallback, getBookCover, hideTinyCover } from '../book/BookCard';
+import { getBookFallback, hideTinyCover } from '../book/BookCard';
+import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
 import { calculatePercentage } from '../../core/business/progress';
 
 interface DiaryCardProps {
@@ -17,6 +18,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   onOpenQuotes,
 }) => {
   const fb = getBookFallback(book.title);
+  const coverUrl = useBookCoverUrl(book);
   const perc = calculatePercentage(book.paginasLidas, book.paginas);
   const quotesCount = Array.isArray(book.citacoes) ? book.citacoes.length : 0;
 
@@ -82,9 +84,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <div className="fallback" style={{ fontSize: 20 }}>
             {fb.initials}
           </div>
-          {getBookCover(book) ? (
+          {coverUrl ? (
             <img
-              src={getBookCover(book)}
+              src={coverUrl}
               alt={book.title}
               onLoad={hideTinyCover}
               style={{

@@ -11,6 +11,7 @@ import {
   type OpenLibrarySearchResult,
 } from '../core/business/open-library';
 import { importBooksContent } from '../core/business/csv-parser';
+import { ensureCoverCached } from '../core/storage/cover-cache';
 
 export const AddBookPage: React.FC = () => {
   const navigate = useNavigate();
@@ -196,7 +197,11 @@ export const AddBookPage: React.FC = () => {
         const current =
           booksRef.current.find((x) => x.id === list[i].id) || list[i];
         const updated = applyMetadata(current, meta);
-        if (updated) await saveBook(updated);
+        if (updated) {
+          await saveBook(updated);
+          // Capa recém-encontrada: guarda em Minha Biblioteca/capas
+          void ensureCoverCached(updated);
+        }
       } catch {
         // limite persistente (429 mesmo após retentativa): encerra a fila
         break;
@@ -231,6 +236,8 @@ export const AddBookPage: React.FC = () => {
         const updated = applyMetadata(current, meta);
         if (updated) {
           await saveBook(updated);
+          // Capa recém-encontrada: guarda em Minha Biblioteca/capas
+          void ensureCoverCached(updated);
           found++;
           log(`✓ ${b.title}${meta?.isbn ? ` → ISBN ${meta.isbn}` : ' → capa encontrada'}`);
         } else {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Book } from '../../core/models/book';
-import { getBookFallback, getBookCover, hideTinyCover } from '../book/BookCard';
+import { getBookFallback, hideTinyCover } from '../book/BookCard';
+import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
 import { useSound } from '../../hooks/useSound';
 
 export interface CoverOrigin {
@@ -73,6 +74,8 @@ export const ReviewNotebook: React.FC<ReviewNotebookProps> = ({
     return () => cancel(handle);
   }, [coverOrigin]);
 
+  const coverUrl = useBookCoverUrl(book);
+
   if (!isOpen || !book) return null;
 
   const fb = getBookFallback(book.title);
@@ -114,7 +117,7 @@ export const ReviewNotebook: React.FC<ReviewNotebookProps> = ({
                 style={{ '--g1': fb.g1, '--g2': fb.g2 } as React.CSSProperties}
               >
                 <div className="fallback">{fb.initials}</div>
-                {getBookCover(book) ? <img src={getBookCover(book)} alt="" onLoad={hideTinyCover} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} /> : null}
+                {coverUrl ? <img src={coverUrl} alt="" onLoad={hideTinyCover} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} /> : null}
               </div>
               <div className="flip-face back" />
             </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Book, BookStatus } from '../../core/models/book';
 import { calculatePercentage, applyBookProgressUpdate } from '../../core/business/progress';
-import { getBookFallback, getBookCover, hideTinyCover } from './BookCard';
+import { getBookFallback, hideTinyCover } from './BookCard';
+import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
 import { shareBook, showToast } from '../../core/business/share';
 
 interface BookModalProps {
@@ -135,7 +136,7 @@ export const BookModal: React.FC<BookModalProps> = ({
 
   const perc = calculatePercentage(paginasLidas, totalPaginas);
   const fb = getBookFallback(book.title);
-  const coverUrl = getBookCover(book);
+  const coverUrl = useBookCoverUrl(book);
 
   const handleSave = async () => {
     setSaving(true);

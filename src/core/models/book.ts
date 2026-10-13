@@ -31,6 +31,7 @@ export interface Book {
   resenha?: string;
   resenhaSpoilers?: boolean;
   cover?: string;
+  coverFileId?: string; // ID do arquivo da capa em Minha Biblioteca/capas no Drive
   codigo_isbn?: string | null;
   readingEpoch?: number;
   citacoes?: Citacao[];

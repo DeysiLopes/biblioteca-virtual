@@ -50,7 +50,8 @@ function mapFormat(fmt: string | undefined): string | undefined {
 
 /** Livro precisa de enriquecimento quando falta metadado básico. */
 export function needsMetadata(book: Book): boolean {
-  return !book.codigo_isbn || !book.cover || !book.author || !book.paginas;
+  // coverFileId = capa já guardada em Minha Biblioteca/capas — não busca de novo
+  return !book.codigo_isbn || (!book.cover && !book.coverFileId) || !book.author || !book.paginas;
 }
 
 /**

@@ -199,7 +199,12 @@ export class LibrarySyncManager {
   public async resetLocalData(): Promise<void> {
     this.inMemoryBooks = [];
     this.inMemoryDiary = [];
-    await Promise.all([clearStore('books'), clearStore('diary'), clearStore('meta')]);
+    await Promise.all([
+      clearStore('books'),
+      clearStore('diary'),
+      clearStore('meta'),
+      clearStore('covers'),
+    ]);
     await setMetaValue('localWiped', true);
     syncChannel.broadcast({ type: 'LIBRARY_UPDATED', timestamp: Date.now() });
   }

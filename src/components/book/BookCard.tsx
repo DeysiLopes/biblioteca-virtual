@@ -1,5 +1,6 @@
 import React from 'react';
 import { Book } from '../../core/models/book';
+import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
 import { normalizeString } from '../../core/business/csv-parser';
 
 interface BookCardProps {
@@ -55,6 +56,7 @@ export function hideTinyCover(e: React.SyntheticEvent<HTMLImageElement>) {
 }
 
 export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick }) => {
+  const coverUrl = useBookCoverUrl(book);
   const fb = getBookFallback(book.title);
   let h = 86 + (hashHue(book.title || '') % 54);
   const cls = ['', 'lean', '', '', 'leanl', 'short'][modeIndex % 6];
@@ -84,10 +86,10 @@ export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick
         title={tip}
       >
         <div className="fallback">{fb.initials}</div>
-        {getBookCover(book) ? (
+        {coverUrl ? (
           <img
             loading="lazy"
-            src={getBookCover(book)}
+            src={coverUrl}
             alt={book.title}
             onLoad={hideTinyCover}
             onError={(e) => {

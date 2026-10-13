@@ -3,14 +3,19 @@ import { authService } from '../auth/google-auth';
 
 const FOLDER_NAME = 'Minha Biblioteca';
 const SUBFOLDER_NAME = 'Biblioteca';
+const COVERS_FOLDER_NAME = 'capas';
 
 export class GoogleDriveService {
   private folderId: string | null = null;
   private dataFolderId: string | null = null;
+  private coversFolderId: string | null = null;
   private fileId: string | null = null;
   private folderPromise: Promise<string> | null = null;
   private dataFolderPromise: Promise<string> | null = null;
+  private coversFolderPromise: Promise<string> | null = null;
   private uploadQueue: Promise<void> = Promise.resolve();
+  // Modo mock dos testes: capas em memória (id ↔ blob)
+  private mockCovers = new Map<string, { id: string; blob: Blob }>();
 
   private getAuthHeader(): Record<string, string> {
     const auth = authService.getAuthState();
@@ -49,6 +54,22 @@ export class GoogleDriveService {
       .then((id) => (this.dataFolderId = id))
       .finally(() => (this.dataFolderPromise = null));
     return this.dataFolderPromise;
+  }
+
+  /**
+   * Pasta de capas: "capas" dentro de "Minha Biblioteca".
+   * Guarda um arquivo por capa encontrada: <isbn>.jpg ou book-<id>.jpg
+   */
+  public async getOrCreateCoversFolder(): Promise<string> {
+    const auth = authService.getAuthState();
+    if (auth.isMock) return 'mock-covers-folder-id';
+    if (this.coversFolderId) return this.coversFolderId;
+
+    this.coversFolderPromise ??= this.getOrCreateFolder()
+      .then((rootId) => this.findOrCreateFolder(COVERS_FOLDER_NAME, rootId))
+      .then((id) => (this.coversFolderId = id))
+      .finally(() => (this.coversFolderPromise = null));
+    return this.coversFolderPromise;
   }
 
   private async findOrCreateFolder(name: string, parentId?: string): Promise<string> {
@@ -258,6 +279,95 @@ export class GoogleDriveService {
       const createData = await createRes.json();
       this.fileId = createData.id;
     }
+  }
+
+  /**
+   * Procura uma capa pelo nome do arquivo dentro de Minha Biblioteca/capas.
+   * Devolve o ID do arquivo ou null.
+   */
+  public async findCoverByName(name: string): Promise<string | null> {
+    const auth = authService.getAuthState();
+    if (auth.isMock) return this.mockCovers.get(name)?.id ?? null;
+
+    const headers = this.getAuthHeader();
+    const folderId = await this.getOrCreateCoversFolder();
+    const query = encodeURIComponent(
+      `name = '${name}' and '${folderId}' in parents and trashed = false`
+    );
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&orderBy=createdTime`,
+      { headers }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.files?.[0]?.id ?? null;
+  }
+
+  /**
+   * Sobe a capa para Minha Biblioteca/capas/<name>. Se o arquivo já existe
+   * (mesmo ISBN/id vindo de outro aparelho), devolve o ID sem reenviar.
+   */
+  public async uploadCover(name: string, blob: Blob): Promise<string | null> {
+    const auth = authService.getAuthState();
+    if (auth.isMock) {
+      const existing = this.mockCovers.get(name);
+      if (existing) return existing.id;
+      const id = `mock-cover-${name}`;
+      this.mockCovers.set(name, { id, blob });
+      return id;
+    }
+
+    const existingId = await this.findCoverByName(name);
+    if (existingId) return existingId;
+
+    const headers = this.getAuthHeader();
+    const folderId = await this.getOrCreateCoversFolder();
+    const mime = blob.type || 'image/jpeg';
+    const metadata = { name, parents: [folderId], mimeType: mime };
+
+    const boundary = '-------314159265358979323846';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelim = `\r\n--${boundary}--`;
+    const multipart = new Blob(
+      [
+        delimiter,
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+        JSON.stringify(metadata),
+        delimiter,
+        `Content-Type: ${mime}\r\n\r\n`,
+        blob,
+        closeDelim,
+      ],
+      { type: `multipart/related; boundary=${boundary}` }
+    );
+
+    const res = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+      { method: 'POST', headers: { ...headers }, body: multipart }
+    );
+    if (!res.ok) {
+      console.warn(`Falha ao subir capa "${name}" no Drive:`, res.statusText);
+      return null;
+    }
+    const data = await res.json();
+    return data.id ?? null;
+  }
+
+  /** Baixa o blob de uma capa pelo ID do arquivo no Drive. */
+  public async downloadCover(fileId: string): Promise<Blob | null> {
+    const auth = authService.getAuthState();
+    if (auth.isMock) {
+      for (const { id, blob } of this.mockCovers.values()) {
+        if (id === fileId) return blob;
+      }
+      return null;
+    }
+
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: this.getAuthHeader() }
+    );
+    return res.ok ? await res.blob() : null;
   }
 }
 

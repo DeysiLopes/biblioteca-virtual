@@ -3,7 +3,7 @@ import { DiaryEntry } from '../models/diary';
 import { UserMeta } from '../models/user-data';
 
 const DB_NAME = 'biblioteca';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -21,6 +21,10 @@ export function getIDB(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains('meta')) {
           db.createObjectStore('meta', { keyPath: 'k' });
+        }
+        // Cache local de capas (blob) — espelha Minha Biblioteca/capas do Drive
+        if (!db.objectStoreNames.contains('covers')) {
+          db.createObjectStore('covers', { keyPath: 'name' });
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -128,7 +132,27 @@ export async function persistBookAndDiaryAtomic(book: Book, diaryEntry?: DiaryEn
   });
 }
 
-export async function clearStore(name: 'books' | 'diary' | 'meta'): Promise<void> {
+export async function getCoverBlob(name: string): Promise<Blob | null> {
+  const db = await getIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('covers', 'readonly');
+    const req = tx.objectStore('covers').get(name);
+    req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function putCoverBlob(name: string, blob: Blob): Promise<void> {
+  const db = await getIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('covers', 'readwrite');
+    const req = tx.objectStore('covers').put({ name, blob, ts: Date.now() });
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function clearStore(name: 'books' | 'diary' | 'meta' | 'covers'): Promise<void> {
   const db = await getIDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(name, 'readwrite');

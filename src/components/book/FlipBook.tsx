@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Book } from '../../core/models/book';
-import { getBookFallback, getBookCover, hideTinyCover } from './BookCard';
+import { getBookFallback, hideTinyCover } from './BookCard';
+import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
 
 interface FlipBookProps {
   book: Book;
@@ -94,6 +95,8 @@ export const FlipBook: React.FC<FlipBookProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  const coverUrl = useBookCoverUrl(book);
 
   if (!isOpen || !book) return null;
 
@@ -205,9 +208,9 @@ export const FlipBook: React.FC<FlipBookProps> = ({
             }
           >
             <div className="fallback">{fb.initials}</div>
-            {getBookCover(book) ? (
+            {coverUrl ? (
               <img
-                src={getBookCover(book)}
+                src={coverUrl}
                 alt={book.title}
                 onLoad={hideTinyCover}
                 onError={(e) => {
