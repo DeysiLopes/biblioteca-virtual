@@ -15,10 +15,12 @@ Status: rodada de 2026-10-13 concluiu o bug do sync de citações, a Citação d
 
 ```
 link → r.jina.ai (legenda + capa, CORS liberado)
+        ├─ falhou/incompleto? → api/v1/oembed via worker (legenda + thumbnail — endpoint de embed, sem 429)
         ├─ legenda lista "Título — Autor"? → parser local (caption-parse.ts) → revisão ✨ zero chamada de IA
         ├─ legenda sem lista → aviso "scan mais minucioso" → LLM-texto → revisão
-        └─ falhou? → proxy CORS → video_url/og:image → frames → LLM-visão
-             └ falhou? → upload de vídeo/prints (alternativa na mesma aba)
+        └─ sem legenda útil → vídeo via kkinstagram (worker + UA de crawler → 302 → mp4 scontent) → frames → LLM-visão
+             └ falhou? → capa/thumbnail como frame → LLM-visão
+                  └ falhou? → upload de vídeo/prints (alternativa na mesma aba)
 ```
 
 - **Legenda resolve sozinha:** `caption-parse.ts` extrai listas numeradas/emoji ("1️⃣ Título — Autor", "2. Título - Autor", "Título by Autor", "|"). Conservador: linha sem separador não vira livro. Funciona **sem API key** quando a legenda entrega tudo — a chave só é exigida quando o scan minucioso é necessário.
@@ -29,11 +31,19 @@ link → r.jina.ai (legenda + capa, CORS liberado)
 - Chave do LLM (Gemini/OpenAI/Claude) fica no campo da UI ou `VITE_LLM_API_KEY`/`VITE_GEMINI_API_KEY` no `.env`; salva só no IndexedDB `meta`, nunca no Drive
 - 90 testes, build e `git diff --check` limpos. Arquivos: `src/core/business/llm/*` e `src/components/scan/ReelScanner.tsx`
 
-### ✅ Cloudflare Worker publicado (2026-10-13)
+### ✅ Cloudflare Worker publicado + 429 contornado (2026-10-13)
 
-Worker live, deploy automático via Workers Builds conectado ao repo (`wrangler.toml` na raiz, `main = workers/reel-proxy.js`). **A URL não fica no código**: vem do secret `VITE_REEL_PROXY` no GitHub Actions (injetado no build em `react-vite.yml`) ou do `.env` local em dev; meta `reelProxy` segue como override por aparelho. ⚠️ Pendente: criar o secret `VITE_REEL_PROXY` no repo (Settings → Secrets and variables → Actions) com a URL do worker publicado. Verificado: ytimg 200 + CORS `*` ✓, allowlist bloqueia hosts fora da lista ✓.
+Worker live (`biblioteca-virtual.deysilinconl.workers.dev`), deploy automático via Workers Builds conectado ao repo (`wrangler.toml` na raiz). **A URL não fica no código**: secret `VITE_REEL_PROXY` no GitHub (criado via `gh secret`, injetado no build em `react-vite.yml`), `.env` local em dev, meta `reelProxy` como override.
 
-**Limitação observada:** o Instagram responde **429** pra chamadas vindas de IPs de datacenter (Cloudflare) — o HTML da página do reel ainda não vem de forma confiável por esse caminho. O worker segue útil (capas CDN, ytimg, e tentativas ocasionais que passam), mas o `video_url` do Instagram pode continuar dependendo de sorte. O caminho principal (Jina legenda → parser local → LLM) não é afetado.
+**O 429 foi contornado** — verificado end-to-end com `wrangler dev` no reel real `DeVKPZyympI`:
+
+- Página normal do IG → 429 de datacenter (confirmado, morreu). `/embed/` → 200 mas é shell JS sem mídia. GraphQL/`?__a=1`/`media/info` → pedem login. Todos mortos para acesso anônimo.
+- **`api/v1/oembed/?url=` → 200** com legenda + `thumbnail_url` + `media_id` — é o endpoint de embed (WhatsApp/Discord), passa de datacenter. Virou o fallback de legenda/capa quando o Jina falha.
+- **`kkinstagram.com/reel/{code}` com UA de crawler (`Discordbot`) → 302 → mp4 real em `scontent.cdninstagram.com`** — 14MB `video/mp4` verificado pelo worker. O worker usa UA de crawler só pra esse host (`UA_CRAWLER`); kk está no allowlist. Posts de foto devolvem jpg — `extractFramesFromReel` trata pelo content-type do blob.
+- O app sempre preenche `videoUrl` do kk para Instagram: quando nem legenda nem capa existem, a resolução não falha mais — quem decide é o download dos frames.
+- `extract.ts` agora tenta o vídeo **mesmo com capa disponível** (livros podem só aparecer nos frames). Dependências externas novas: `kkinstagram.com` (serviço de fixup, pode cair/mudar — fallback = capa + upload manual).
+
+Verificado: ytimg 200 + CORS `*` ✓, allowlist bloqueia fora da lista ✓, kk→mp4 200 video/mp4 14MB ✓, oembed 200 JSON ✓ — tudo via `wrangler dev` local.
 
 ### ✅ Citação do dia ("frase do dia") — implementada
 

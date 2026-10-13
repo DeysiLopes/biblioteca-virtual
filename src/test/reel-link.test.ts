@@ -64,6 +64,34 @@ describe('resolveReelLink', () => {
     const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
     expect(reel.caption).toContain('4 thrillers');
     expect(reel.imageUrl).toBe('https://cdn.example.com/cover.jpg');
+    // vídeo sempre disponível via kkinstagram (o worker busca com UA de crawler)
+    expect(reel.videoUrl).toBe('https://www.kkinstagram.com/reel/ABC123/');
+  });
+
+  it('via oembed: legenda + thumbnail quando o Jina falha', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (u: any) => {
+        const s = String(u);
+        if (s.includes('r.jina.ai')) return new Response('err', { status: 500 });
+        if (s.includes('oembed')) {
+          return new Response(
+            JSON.stringify({
+              title: 'my fave fantasy books atm',
+              author_name: 'alguem',
+              thumbnail_url: 'https://scontent.cdninstagram.com/thumb.jpg',
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response('<html></html>', { status: 200 });
+      })
+    );
+
+    const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
+    expect(reel.caption).toBe('my fave fantasy books atm');
+    expect(reel.imageUrl).toBe('https://scontent.cdninstagram.com/thumb.jpg');
+    expect(reel.videoUrl).toBe('https://www.kkinstagram.com/reel/ABC123/');
   });
 
   it('fallback: extrai video_url do HTML quando o Jina falha', async () => {
@@ -83,11 +111,12 @@ describe('resolveReelLink', () => {
     expect(reel.videoUrl).toBe('https://scontent.cdninstagram.com/v/reel.mp4?token=abc&x=1');
   });
 
-  it('falha com mensagem clara quando não acha nada', async () => {
+  it('sem legenda nem capa, ainda devolve o videoUrl do kkinstagram para tentar os frames', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html></html>', { status: 200 })));
-    await expect(
-      resolveReelLink('https://www.instagram.com/reel/ABC123/')
-    ).rejects.toThrow('público');
+    const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
+    expect(reel.videoUrl).toBe('https://www.kkinstagram.com/reel/ABC123/');
+    expect(reel.caption).toBeUndefined();
+    expect(reel.imageUrl).toBeUndefined();
   });
 
   it('usa o worker próprio antes dos proxies públicos quando configurado', async () => {
@@ -108,10 +137,10 @@ describe('resolveReelLink', () => {
 
     const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
     expect(reel.videoUrl).toContain('scontent.cdninstagram.com');
-    // o worker foi a primeira (e única) fonte de proxy chamada
+    // toda chamada proxada (oembed + página) passou pelo worker, nunca pelos públicos
     const proxied = calls.filter((s) => !s.includes('r.jina.ai'));
-    expect(proxied).toHaveLength(1);
-    expect(proxied[0]).toContain('reel-proxy.eu.workers.dev');
+    expect(proxied.length).toBeGreaterThan(0);
+    for (const c of proxied) expect(c).toContain('reel-proxy.eu.workers.dev');
   });
 
   it('link inválido rejeita antes de buscar', async () => {

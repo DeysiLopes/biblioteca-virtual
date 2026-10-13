@@ -126,15 +126,31 @@ export async function extractBooksFromLink(
     onNote?.('Esse post não tem legenda útil — a IA vai analisar a imagem/vídeo…');
   }
 
-  // 3) frames da capa ou do vídeo → LLM de visão
-  if (!frames.length) {
-    const { frames: extracted, note } = await extractFramesFromReel(reel);
-    frames.push(...extracted);
-    if (note) return { books: parseScannedBooks(await callLLM(config.provider, config.apiKey, frames)), frames, note };
+  // 3) vídeo real do reel (quando acessível) + capa → LLM de visão.
+  //    Tenta o vídeo mesmo com capa disponível: os livros podem só aparecer
+  //    nos frames, nunca na capa.
+  let mediaNote: string | undefined;
+  if (reel.videoUrl || !frames.length) {
+    onNote?.('Baixando o vídeo do reel para a IA ler os frames…');
+    try {
+      const got = await extractFramesFromReel(reel);
+      frames.push(...got.frames);
+      mediaNote = got.note;
+    } catch {
+      // segue só com a capa, se ela foi baixada
+    }
   }
   if (!frames.length) {
     throw new Error('Não consegui ler nada desse link. Tenta enviar o vídeo/prints.');
   }
   const books = parseScannedBooks(await callLLM(config.provider, config.apiKey, frames));
-  return { books, frames, note: reel.caption ? 'Legenda sem lista — a IA leu a imagem do post.' : 'Sem legenda — a IA leu a imagem do post.' };
+  return {
+    books,
+    frames,
+    note:
+      mediaNote ??
+      (reel.caption
+        ? 'Legenda sem lista — a IA leu a imagem do post.'
+        : 'Sem legenda — a IA leu a imagem do post.'),
+  };
 }

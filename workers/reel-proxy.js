@@ -6,14 +6,20 @@
  * o conteúdo com User-Agent de browser e devolve com CORS liberado.
  * Um allowlist de hosts impede que ele vire um proxy aberto.
  *
- * Deploy (uma vez, ~5 min, plano free = 100k req/dia):
- *   1. dash.cloudflare.com → Workers & Pages → Create Worker
- *   2. Cole este arquivo no editor → Deploy
- *   3. Copie a URL (https://reel-proxy.<sub>.workers.dev)
- *   4. No app: cole a URL no campo "Proxy do reel" da aba Scan
- *      (ou VITE_REEL_PROXY no .env local para desenvolvimento)
+ * Deploy: automático via Workers Builds conectado ao repo (push na main).
+ * A URL entra no app via VITE_REEL_PROXY (secret do GitHub no build; .env
+ * local em dev) ou meta reelProxy (override por aparelho). Não é segredo —
+ * é só um endereço de proxy; o allowlist abaixo impede uso aberto.
  */
-const ALLOWED_HOSTS = /(^|\.)(instagram\.com|cdninstagram\.com|fbcdn\.net|ytimg\.com)$/;
+const ALLOWED_HOSTS =
+  /(^|\.)(instagram\.com|cdninstagram\.com|fbcdn\.net|ytimg\.com|kkinstagram\.com)$/;
+
+const UA_BROWSER =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36';
+// kkinstagram só libera o mp4 (302 → scontent.cdninstagram.com) para UAs de
+// crawler — é o mecanismo do embed de vídeo no Discord/Telegram.
+const UA_CRAWLER =
+  'Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -40,8 +46,9 @@ export default {
     }
     const res = await fetch(target.toString(), {
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        'User-Agent': /(^|\.)kkinstagram\.com$/.test(target.hostname)
+          ? UA_CRAWLER
+          : UA_BROWSER,
       },
       redirect: 'follow',
     });

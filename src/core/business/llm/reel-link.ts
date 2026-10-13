@@ -155,7 +155,30 @@ function unescapeJsonString(raw: string): string {
   }
 }
 
-/** Plano B pro Instagram: HTML via proxy → video_url embutido ou og:image. */
+/**
+ * Endpoint oembed do próprio Instagram — é o que o embed do WhatsApp/Discord
+ * usa, então passa por IPs de datacenter que tomariam 429 na página normal.
+ * Devolve legenda (title) + thumbnail_url + media_id.
+ */
+async function fetchInstagramOembed(
+  pageUrl: string
+): Promise<Pick<ResolvedReel, 'caption' | 'imageUrl'> | null> {
+  try {
+    const res = await fetchViaProxy(
+      `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(pageUrl)}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const caption = typeof data?.title === 'string' ? data.title : undefined;
+    const imageUrl =
+      typeof data?.thumbnail_url === 'string' ? data.thumbnail_url : undefined;
+    return caption || imageUrl ? { caption, imageUrl } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Plano C pro Instagram: HTML da página normal via proxy → video_url embutido. */
 async function scrapeInstagramHtml(pageUrl: string): Promise<Partial<ResolvedReel>> {
   const res = await fetchViaProxy(pageUrl);
   const html = await res.text();
@@ -172,9 +195,16 @@ async function scrapeInstagramHtml(pageUrl: string): Promise<Partial<ResolvedRee
   return { videoUrl, imageUrl: meta('og:image') };
 }
 
+function instagramShortcode(pageUrl: string): string | undefined {
+  return pageUrl.match(/\/(?:reel|reels|p)\/([\w-]+)/)?.[1];
+}
+
 /**
- * Resolve o link para o que conseguimos ler: legenda (via Jina), capa e/ou
- * URL direta do vídeo. Jina primeiro; proxies só como fallback.
+ * Resolve o link para o que conseguimos ler: legenda (Jina → oembed), capa
+ * e URL do vídeo. Para Instagram, o videoUrl vem do kkinstagram (serviço de
+ * fixup que devolve 302 → mp4 do CDN quando requisitado com UA de crawler —
+ * o worker faz isso). Quando nem legenda nem capa existem, ainda devolve o
+ * videoUrl: o download dos frames é quem decide se deu certo.
  */
 export async function resolveReelLink(input: string): Promise<ResolvedReel> {
   const reel = parseReelUrl(input);
@@ -183,17 +213,36 @@ export async function resolveReelLink(input: string): Promise<ResolvedReel> {
       'Link não reconhecido — cole a URL de um reel do Instagram ou short do YouTube.'
     );
   }
+  if (reel.platform === 'youtube' && reel.imageUrl) return reel;
+
+  const code = instagramShortcode(reel.pageUrl);
+  const kkVideoUrl = code ? `https://www.kkinstagram.com/reel/${code}/` : undefined;
 
   const jina = await fetchViaJina(reel.pageUrl);
-  if (jina && (jina.caption || jina.imageUrl)) {
-    return { ...reel, ...jina };
+  let data = jina;
+  if (!data?.caption && !data?.imageUrl) {
+    const oe = await fetchInstagramOembed(reel.pageUrl);
+    if (oe) {
+      data = {
+        caption: data?.caption ?? oe.caption,
+        imageUrl: data?.imageUrl ?? oe.imageUrl,
+      };
+    }
+  }
+  if (data?.caption || data?.imageUrl) {
+    return { ...reel, ...data, videoUrl: kkVideoUrl };
   }
 
-  if (reel.platform === 'instagram') {
-    const scraped = await scrapeInstagramHtml(reel.pageUrl);
-    if (scraped.videoUrl || scraped.imageUrl) return { ...reel, ...scraped };
+  // oembed/jina falharam: página normal como última fonte de metadados
+  // (o IG responde 429 para IPs de datacenter na maioria das vezes — por isso
+  // é a última tentativa, não a primeira)
+  const scraped = await scrapeInstagramHtml(reel.pageUrl).catch(() => null);
+  if (scraped && (scraped.videoUrl || scraped.imageUrl)) {
+    return { ...reel, ...scraped, videoUrl: scraped.videoUrl ?? kkVideoUrl };
   }
-  if (reel.platform === 'youtube' && reel.imageUrl) return reel;
+
+  // sem legenda nem capa, mas o vídeo pode existir — extractFrames decide
+  if (kkVideoUrl) return { ...reel, videoUrl: kkVideoUrl };
 
   throw new Error(
     'Não achei legenda, vídeo nem capa nesse link — confere se o post é público.'
@@ -211,6 +260,13 @@ export async function extractFramesFromReel(
     try {
       const blob = await (await fetchViaProxy(reel.videoUrl)).blob();
       if (blob.size > 0) {
+        // o kkinstagram devolve a foto do post quando o link não é vídeo
+        if (blob.type.startsWith('image/')) {
+          return {
+            frames: await extractFramesFromImageBlob(blob),
+            note: 'O post é uma foto — o scan vai usar a imagem.',
+          };
+        }
         const frames = await extractFramesFromVideoBlob(blob);
         if (frames.length) return { frames };
       }

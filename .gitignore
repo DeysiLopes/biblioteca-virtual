@@ -16,3 +16,6 @@ index.vanilla.html
 data/
 books.json
 identidade-visual/photo_*.jpg
+
+# Cache local do wrangler dev (Workers)
+.wrangler/
