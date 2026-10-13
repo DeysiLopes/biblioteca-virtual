@@ -63,6 +63,19 @@ https://instagram.com/exemplo
     expect(books[0].title).toBe('Livro Teste');
   });
 
+  it('ignora o título da página devolvido pelo Jina ("X on Instagram: …")', () => {
+    // o Jina junta título+descrição na legenda — a primeira linha é
+    // "@perfil on Instagram: \"…\"" e não deve virar livro
+    const caption = `LEITOR OCULTO| IG LITERÁRIO on Instagram: " 4 THRILLERS QUE VÃO VIRAR TUDO DE CABEÇA PARA BAIXO — PARTE 3
+100 likes
+📖 Os livros:
+1️⃣ A Última Casa da Rua Needless — Catriona Ward
+2️⃣ Tudo em Família — John Marrs`;
+    const books = parseCaptionBooks(caption);
+    expect(books).toHaveLength(2);
+    expect(books.every((b) => !b.title.includes('Instagram'))).toBe(true);
+  });
+
   it('deduplica títulos repetidos na legenda', () => {
     const caption = `1️⃣ O Mesmo — Autor A
 2️⃣ O MESMO — Autor B

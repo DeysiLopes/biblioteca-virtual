@@ -22,8 +22,10 @@ const SEP = /\s+(?:—|–|-|\||by)\s+/;
 const BULLET =
   /^(?:\d+\s*(?:[.)\]:-]|️⃣)?\s*|[\p{Extended_Pictographic}\u{FE0F}\u{20E3}•▪*–—-]+\s*)+/u;
 
-// Linhas que claramente não são livros: hashtags, links, cabeçalhos
-const SKIP_LINE = /^(?:#|https?:|@)|:$|(?:lista|livros|books)\s*:?\s*$/i;
+// Linhas que claramente não são livros: hashtags, links, cabeçalhos,
+// e o título da página devolvido pelo Jina ("Fulano on Instagram: "…"")
+const SKIP_LINE =
+  /^(?:#|https?:|@)|:$|(?:lista|livros|books)\s*:?\s*$|on instagram/i;
 
 function cleanTitle(s: string): string {
   return s
