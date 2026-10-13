@@ -3,6 +3,7 @@ import { Book, BookStatus } from '../../core/models/book';
 import { calculatePercentage, applyBookProgressUpdate } from '../../core/business/progress';
 import { getBookFallback, hideTinyCover } from './BookCard';
 import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
+import { topQueuePosition } from '../../core/business/queue';
 import { shareBook, showToast } from '../../core/business/share';
 
 interface BookModalProps {
@@ -78,6 +79,7 @@ export const BookModal: React.FC<BookModalProps> = ({
   const [fim, setFim] = useState<string>(book.fim || '');
   const [comentarios, setComentarios] = useState<string>(book.comentarios || '');
   const [nota, setNota] = useState<number>(book.nota || 0);
+  const [queueTop, setQueueTop] = useState(false);
   const [saving, setSaving] = useState(false);
   const [landed, setLanded] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -93,6 +95,7 @@ export const BookModal: React.FC<BookModalProps> = ({
       setFim(book.fim || '');
       setComentarios(book.comentarios || '');
       setNota(book.nota || 0);
+      setQueueTop(false);
     }
   }, [book]);
 
@@ -152,6 +155,14 @@ export const BookModal: React.FC<BookModalProps> = ({
         comentarios
       );
       updatedBook.nota = nota;
+      // Fila "Quero ler": marcado como próximo vai pro topo; fora do status, sai da fila
+      if (status === 'Quero ler') {
+        updatedBook.filaPosicao = queueTop
+          ? topQueuePosition(allBooks.filter((b) => b.id !== book.id))
+          : book.filaPosicao ?? null;
+      } else {
+        updatedBook.filaPosicao = null;
+      }
       await onSave(updatedBook, newDiaryEntry);
       handleClose();
     } catch (err) {
@@ -276,6 +287,19 @@ export const BookModal: React.FC<BookModalProps> = ({
             </select>
           </div>
         </div>
+
+        {/* Na fila "Quero ler" dá para marcá-lo como o próximo a subir
+            (equivale a arrastar para o início da prateleira, útil no toque) */}
+        {status === 'Quero ler' && (
+          <button
+            type="button"
+            className={`pill ${queueTop ? 'on' : ''}`}
+            style={{ marginTop: 10 }}
+            onClick={() => setQueueTop((v) => !v)}
+          >
+            📌 {queueTop ? 'Será o próximo da fila' : 'Colocar no topo da fila'}
+          </button>
+        )}
 
         {/* Progresso Dinâmico */}
         <div style={{ marginTop: 16 }}>

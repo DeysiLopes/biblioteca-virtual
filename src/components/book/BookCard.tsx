@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Book } from '../../core/models/book';
 import { useBookCoverUrl } from '../../hooks/useBookCoverUrl';
 import { normalizeString } from '../../core/business/csv-parser';
@@ -7,6 +7,9 @@ interface BookCardProps {
   book: Book;
   modeIndex?: number;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void;
 }
 
 export function hashHue(s: string): number {
@@ -55,9 +58,10 @@ export function hideTinyCover(e: React.SyntheticEvent<HTMLImageElement>) {
   }
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick }) => {
+export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick, draggable, onDragStart, onDragEnd }) => {
   const coverUrl = useBookCoverUrl(book);
   const fb = getBookFallback(book.title);
+  const [dragging, setDragging] = useState(false);
   let h = 86 + (hashHue(book.title || '') % 54);
   const cls = ['', 'lean', '', '', 'leanl', 'short'][modeIndex % 6];
   if (modeIndex % 6 === 5) h = Math.round(h * 0.84);
@@ -66,7 +70,16 @@ export const BookCard: React.FC<BookCardProps> = ({ book, modeIndex = 0, onClick
 
   return (
     <div
-      className={`book-card ${cls}`}
+      className={`book-card ${cls}${dragging ? ' dragging' : ''}`}
+      draggable={draggable}
+      onDragStart={(e) => {
+        setDragging(true);
+        onDragStart?.(e);
+      }}
+      onDragEnd={(e) => {
+        setDragging(false);
+        onDragEnd?.(e);
+      }}
       data-id={book.id}
       style={{ '--w': `${w}px`, '--h': `${h}px` } as React.CSSProperties}
       onClick={onClick}

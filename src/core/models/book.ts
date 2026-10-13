@@ -34,6 +34,7 @@ export interface Book {
   coverFileId?: string; // ID do arquivo da capa em Minha Biblioteca/capas no Drive
   codigo_isbn?: string | null;
   readingEpoch?: number;
+  filaPosicao?: number | null; // posição na fila "Quero ler" (menor = topo); null/sem valor = fora da fila
   citacoes?: Citacao[];
   deletedCitacoes?: DeletedCitacao[];
   updatedAt?: number;

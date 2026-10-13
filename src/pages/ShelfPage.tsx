@@ -4,6 +4,9 @@ import { Book, BookStatus } from '../core/models/book';
 import { BookCard, hashHue } from '../components/book/BookCard';
 import { BookModal } from '../components/book/BookModal';
 import { ShelfCat } from '../components/common/ShelfCat';
+import { sortQueue, topQueuePosition } from '../core/business/queue';
+import { applyBookProgressUpdate } from '../core/business/progress';
+import { showToast } from '../core/business/share';
 
 // MVP 1: cada prateleira comporta os livros que cabem na largura disponível
 const bookSize = (b: Book) => 86 + (hashHue(b.title || '') % 54);
@@ -94,11 +97,48 @@ export const ShelfPage: React.FC = () => {
   const sectionRows = useMemo(() => {
     const map = {} as Record<BookStatus, Book[][]>;
     for (const { status } of SHELF_SECTIONS) {
-      const list = filteredBooks.filter((b) => b.status === status);
+      let list = filteredBooks.filter((b) => b.status === status);
+      // "Quero ler" respeita a fila: o primeiro da prateleira é o próximo a subir
+      if (status === 'Quero ler') list = sortQueue(list);
       map[status] = chunkShelfRows(list, shelfWidth || 1024);
     }
     return map;
   }, [filteredBooks, shelfWidth]);
+
+  // Arrastar um livro para uma seção: muda o status; no "Quero ler" vai pro topo da fila
+  const [dragOverStatus, setDragOverStatus] = useState<BookStatus | null>(null);
+  const DROPPABLE: BookStatus[] = ['Lendo', 'Quero ler'];
+
+  const handleDrop = async (status: BookStatus, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverStatus(null);
+    const book = books.find((b) => b.id === e.dataTransfer.getData('text/plain'));
+    if (!book) return;
+    if (book.status === status && status !== 'Quero ler') return;
+
+    // Mesmas regras de transição do modal — um "Lido" completo não
+    // regressa para "Lendo": se a regra negou, não salva nem avisa
+    const { updatedBook } = applyBookProgressUpdate(
+      book,
+      book.paginasLidas || 0,
+      undefined,
+      status
+    );
+    if (updatedBook.status !== status) return;
+    if (status === 'Quero ler') {
+      updatedBook.filaPosicao = topQueuePosition(
+        books.filter((b) => b.id !== book.id)
+      );
+    } else {
+      updatedBook.filaPosicao = null;
+    }
+    await saveBook(updatedBook);
+    showToast(
+      status === 'Lendo'
+        ? `"${book.title}" foi para a estante de Lendo 📖`
+        : `"${book.title}" é o próximo da fila ⭐`
+    );
+  };
 
   // Botões de status viram atalhos de rolagem até a prateleira correspondente
   const scrollToStatus = (st: string) => {
@@ -192,13 +232,33 @@ export const ShelfPage: React.FC = () => {
           const rows = sectionRows[status];
           if (!rows || rows.length === 0) return null;
           const count = rows.reduce((acc, r) => acc + r.length, 0);
+          const droppable = DROPPABLE.includes(status);
           return (
             <section
-              className="shelf-section"
+              className={`shelf-section${dragOverStatus === status ? ' drag-over' : ''}`}
               key={status}
               ref={(el) => {
                 sectionRefs.current[status] = el;
               }}
+              onDragOver={
+                droppable
+                  ? (e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverStatus !== status) setDragOverStatus(status);
+                    }
+                  : undefined
+              }
+              onDragLeave={
+                droppable
+                  ? (e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setDragOverStatus(null);
+                      }
+                    }
+                  : undefined
+              }
+              onDrop={droppable ? (e) => handleDrop(status, e) : undefined}
             >
               <h2>
                 {title} <span>{count} {count === 1 ? 'livro' : 'livros'}</span>
@@ -213,6 +273,12 @@ export const ShelfPage: React.FC = () => {
                           key={b.id}
                           book={b}
                           modeIndex={mi + ri * 3}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', b.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          onDragEnd={() => setDragOverStatus(null)}
                           onClick={(e) => {
                             const rect = (e.currentTarget as HTMLElement)
                               .querySelector('.cover-wrap')
