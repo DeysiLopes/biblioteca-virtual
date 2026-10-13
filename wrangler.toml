@@ -3,6 +3,6 @@
 # (build command npm run build + deploy npx wrangler deploy).
 # Deploy manual: `npx wrangler deploy` na raiz do projeto.
 
-name = "reel-proxy"
+name = "biblioteca-virtual"
 main = "workers/reel-proxy.js"
 compatibility_date = "2026-10-13"
