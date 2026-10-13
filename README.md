@@ -2,13 +2,13 @@
 
 PWA de estante + diário de leitura — **React 18 + Vite + TypeScript**, sincronização opcional via **Google Drive** e funcionamento **offline** completo.
 
-**Site:** https://deysilopes.github.io/biblioteca-virtual/
+**Site:** https://biblioteca-virtual.pages.dev/
 
 ☕ **Gostou? [Me pague um café](https://buymeacoffee.com/deysilopes)** — toda graninha ajuda a manter o projeto vivo.
 
 ## Instalar como app (celular / tablet)
 
-1. Abra https://deysilopes.github.io/biblioteca-virtual/ no navegador.
+1. Abra https://biblioteca-virtual.pages.dev/ no navegador.
 2. **Android (Chrome):** menu ⋮ → **"Adicionar à tela inicial"** / "Instalar app".
 3. **iPhone/iPad (Safari):** botão **Compartilhar** → **"Adicionar à tela inicial"**.
 4. O app abre em tela cheia com o ícone do fantasminha e funciona offline.

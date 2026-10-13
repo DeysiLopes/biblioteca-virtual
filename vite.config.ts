@@ -3,9 +3,17 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+// Base e URL canônica por ambiente: o deploy oficial é o Cloudflare Pages
+// (biblioteca-virtual.pages.dev, na raiz). VITE_BASE_PATH só existe para um
+// eventual deploy em subpasta; VITE_SITE_URL alimenta og:url/og:image.
+const base = process.env.VITE_BASE_PATH ?? '/';
+const siteUrl = (
+  process.env.VITE_SITE_URL ?? 'https://biblioteca-virtual.pages.dev'
+).replace(/\/$/, '');
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/biblioteca-virtual/',
+  base,
   define: {
     // Carimbo visível no header para identificar a versão em execução
     __BUILD_STAMP__: JSON.stringify(new Date().toISOString().slice(5, 16).replace('T', ' ')),
@@ -17,6 +25,11 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // og:url/og:image do index.html variam conforme o domínio do deploy
+    {
+      name: 'site-url',
+      transformIndexHtml: (html: string) => html.replaceAll('%SITE_URL%', siteUrl),
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon-ghost.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-192.png', 'icon-maskable-512.png'],
@@ -28,8 +41,8 @@ export default defineConfig({
         background_color: '#150d15',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/biblioteca-virtual/',
-        scope: '/biblioteca-virtual/',
+        start_url: base,
+        scope: base,
         lang: 'pt-BR',
         categories: ['books', 'lifestyle'],
         icons: [
