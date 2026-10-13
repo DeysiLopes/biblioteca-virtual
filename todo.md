@@ -44,6 +44,21 @@ export default {
 };
 ```
 
+### ⭐ Depois do Cloudflare: Citação do dia ("frase do dia")
+
+Próxima feature logo após o Worker. Ideia: as citações que a pessoa salvou voltam pra ela como uma "frase do dia" — no app instalado (mobile) e/ou na versão web. Aproveita o fichário existente em vez de pedir novos dados.
+
+- [ ] Definir a experiência em cada superfície:
+  - **Web/app aberto**: cartão "✨ Citação do dia" — candidatos: topo do Diário, seção da Estante ou modal discreto ao abrir o app (decidir o ponto menos intrusivo).
+  - **Mobile/PWA**: notificação diária com a citação — o SW já tem mensagens `notify`/`schedule` e o botão "Lembrete" no header; avaliar `NotificationTrigger` (experimental, só Android/Chrome) vs lembrete ao abrir o app.
+- [ ] Regra de seleção da citação do dia: aleatória entre todas as `citacoes` da biblioteca? Ou rodízio determinístico por data (ex.: hash do dia → índice) para todos os aparelhos mostrarem a mesma frase?
+- [ ] Exibir texto da citação + título/autor do livro + página; talvez link direto pro modal do livro ou pra página da citação no `CitacoesModal`.
+- [ ] Respeitar a preferência de som/animação e não notificar de madrugada; escolher horário razoável (manhã/noite) ou configurável.
+- [ ] Fallback sem citações salvas: esconder o cartão ou mostrar uma frase convidando a salvar a primeira citação.
+- [ ] Cuidado com o sync: a "citação do dia" é derivada dos dados locais — não criar entidade persistida nem poluir o merge entre aparelhos (exceto talvez a config de horário/preferência no `meta`, que é local por aparelho).
+- [ ] Testar: seleção determinística por data, biblioteca sem citações, livro apagado depois de salvar a citação, notificação com permissão negada e `prefers-reduced-motion`.
+- [ ] Não depender de rede: a frase do dia deve funcionar 100% offline com o IndexedDB.
+
 ## Retomar esta sessão
 
 Para continuar amanhã na mesma sessão do Devin, execute na pasta do projeto:
