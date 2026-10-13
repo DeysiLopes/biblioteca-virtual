@@ -12,12 +12,14 @@ import {
 } from '../core/business/open-library';
 import { importBooksContent } from '../core/business/csv-parser';
 import { ensureCoverCached } from '../core/storage/cover-cache';
+import { ReelScanner } from '../components/scan/ReelScanner';
+import { ScannedBook } from '../core/business/llm/types';
 
 export const AddBookPage: React.FC = () => {
   const navigate = useNavigate();
   const { books, saveBook, saveBatch } = useLibrary();
 
-  const [tab, setTab] = useState<'isbn' | 'manual' | 'import' | 'enrich'>('isbn');
+  const [tab, setTab] = useState<'scan' | 'isbn' | 'manual' | 'import' | 'enrich'>('scan');
 
   // Form states
   const [isbnInput, setIsbnInput] = useState('');
@@ -46,6 +48,29 @@ export const AddBookPage: React.FC = () => {
   // Import batch states
   const [importText, setImportText] = useState('');
   const [importReport, setImportReport] = useState<string | null>(null);
+
+  // Livros vindos do scan de reels: entram como "Quero ler" e o
+  // enriquecimento (ISBN/capa) roda em segundo plano como na importação
+  const handleScanAdd = async (candidates: ScannedBook[]) => {
+    const newBooks: Book[] = candidates.map((c) => ({
+      id: crypto.randomUUID(),
+      title: c.title.trim(),
+      author: c.author?.trim() || '',
+      status: 'Quero ler',
+      genero: null,
+      paginas: null,
+      paginasLidas: 0,
+      cover: '',
+      codigo_isbn: null,
+      comentarios: '',
+      citacoes: [],
+      deletedCitacoes: [],
+      readingEpoch: 0,
+      updatedAt: Date.now(),
+    }));
+    await saveBatch(newBooks);
+    void enrichBooksInBackground(newBooks, () => {});
+  };
 
   const handleIsbnSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,8 +291,14 @@ export const AddBookPage: React.FC = () => {
         Adicionar Livros à Biblioteca
       </h2>
 
-      {/* Seletor de método de entrada */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+      {/* Seletor de método de entrada — o scan com IA é a forma principal */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <button
+          className={`pill ${tab === 'scan' ? 'on' : ''}`}
+          onClick={() => setTab('scan')}
+        >
+          🎬 Scan de reel
+        </button>
         <button
           className={`pill ${tab === 'isbn' ? 'on' : ''}`}
           onClick={() => setTab('isbn')}
@@ -308,6 +339,9 @@ export const AddBookPage: React.FC = () => {
           {isbnMessage}
         </div>
       )}
+
+      {/* Tab principal: scan de reels com IA */}
+      {tab === 'scan' && <ReelScanner books={books} onAdd={handleScanAdd} />}
 
       {/* Tab 1: ISBN */}
       {tab === 'isbn' && (
