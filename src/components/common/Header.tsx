@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLibrary } from '../../hooks/useLibrary';
+import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { syncManager } from '../../core/storage/sync-manager';
 import { showToast } from '../../core/business/share';
 import {
@@ -11,6 +12,7 @@ import {
 export const Header: React.FC = () => {
   const { isAuthenticated, user, login, logout, isMock } = useAuth();
   const { exportBackup, books } = useLibrary();
+  const { canShow, promptInstall } = useInstallPrompt();
 
   // Lembrete ativo? Entrega a citação do dia como notificação, 1x por dia.
   useEffect(() => {
@@ -63,6 +65,16 @@ export const Header: React.FC = () => {
         Minha Biblioteca <small>estante · diário · avisos · {__BUILD_STAMP__}</small>
       </h1>
       <div className="actions">
+        {canShow && (
+          <button className="hbtn ghost" onClick={promptInstall} title="Instalar como app">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="7" y="2" width="10" height="20" rx="2" />
+              <line x1="11" y1="18" x2="13" y2="18" />
+            </svg>
+            <span>Instalar</span>
+          </button>
+        )}
+
         <button
           className="hbtn ghost"
           onClick={exportBackup}
