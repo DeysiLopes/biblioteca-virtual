@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useLayoutEffect, useRef } from 'react';
 import { useLibrary } from '../hooks/useLibrary';
-import { Book } from '../core/models/book';
+import { Book, BookStatus } from '../core/models/book';
 import { BookCard, hashHue } from '../components/book/BookCard';
 import { BookModal } from '../components/book/BookModal';
 import { ShelfCat } from '../components/common/ShelfCat';
-import { normalizeString } from '../core/business/csv-parser';
 
 // MVP 1: cada prateleira comporta os livros que cabem na largura disponível
 const bookSize = (b: Book) => 86 + (hashHue(b.title || '') % 54);
@@ -29,16 +28,24 @@ function chunkShelfRows(list: Book[], containerWidth: number): Book[][] {
   return rows;
 }
 
+// Ordem das prateleiras: o que está sendo lido primeiro, abandonados por último
+const SHELF_SECTIONS: { status: BookStatus; title: string }[] = [
+  { status: 'Lendo', title: 'Lendo agora' },
+  { status: 'Quero ler', title: 'Quero ler' },
+  { status: 'Lido', title: 'Lidos' },
+  { status: 'Abandonado', title: 'Abandonados' },
+];
+
 export const ShelfPage: React.FC = () => {
   const { books, summary, saveBook } = useLibrary();
 
-  const [selectedStatus, setSelectedStatus] = useState<string>('Todos');
   const [selectedGenre, setSelectedGenre] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('');
+  const [focusStatus, setFocusStatus] = useState<string>('Todos');
   const [activeBook, setActiveBook] = useState<Book | null>(null);
   const [modalRect, setModalRect] = useState<DOMRect | null>(null);
 
-  // Gêneros únicos disponíveis
+  // Gêneros e autores únicos disponíveis para os dropdowns
   const genres = useMemo(() => {
     const set = new Set<string>();
     books.forEach((b) => {
@@ -47,26 +54,28 @@ export const ShelfPage: React.FC = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt'));
   }, [books]);
 
-  // Filtragem dos livros
-  const filteredBooks = useMemo(() => {
-    const q = normalizeString(searchQuery);
-    return books.filter((b) => {
-      if (selectedStatus !== 'Todos' && b.status !== selectedStatus) return false;
-      if (selectedGenre && b.genero !== selectedGenre) return false;
-      if (q) {
-        const titleMatch = normalizeString(b.title).includes(q);
-        const authorMatch = normalizeString(b.author).includes(q);
-        if (!titleMatch && !authorMatch) return false;
-      }
-      return true;
+  const authors = useMemo(() => {
+    const set = new Set<string>();
+    books.forEach((b) => {
+      if (b.author && b.author.trim()) set.add(b.author.trim());
     });
-  }, [books, selectedStatus, selectedGenre, searchQuery]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt'));
+  }, [books]);
 
-  const activeGroupBooks = filteredBooks.filter((b) => b.status !== 'Lido');
-  const readGroupBooks = filteredBooks.filter((b) => b.status === 'Lido');
+  // Filtragem real: só gênero e autor
+  const filteredBooks = useMemo(
+    () =>
+      books.filter((b) => {
+        if (selectedGenre && b.genero !== selectedGenre) return false;
+        if (selectedAuthor && b.author !== selectedAuthor) return false;
+        return true;
+      }),
+    [books, selectedGenre, selectedAuthor]
+  );
 
   // Mede a largura real para quebrar os livros em várias prateleiras
   const shelvesRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Partial<Record<BookStatus, HTMLElement | null>>>({});
   const [shelfWidth, setShelfWidth] = useState(0);
   useLayoutEffect(() => {
     const el = shelvesRef.current;
@@ -82,14 +91,27 @@ export const ShelfPage: React.FC = () => {
     return () => ro.disconnect();
   }, []);
 
-  const activeRows = useMemo(
-    () => chunkShelfRows(activeGroupBooks, shelfWidth || 1024),
-    [activeGroupBooks, shelfWidth]
-  );
-  const readRows = useMemo(
-    () => chunkShelfRows(readGroupBooks, shelfWidth || 1024),
-    [readGroupBooks, shelfWidth]
-  );
+  const sectionRows = useMemo(() => {
+    const map = {} as Record<BookStatus, Book[][]>;
+    for (const { status } of SHELF_SECTIONS) {
+      const list = filteredBooks.filter((b) => b.status === status);
+      map[status] = chunkShelfRows(list, shelfWidth || 1024);
+    }
+    return map;
+  }, [filteredBooks, shelfWidth]);
+
+  // Botões de status viram atalhos de rolagem até a prateleira correspondente
+  const scrollToStatus = (st: string) => {
+    setFocusStatus(st);
+    if (st === 'Todos') {
+      shelvesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    sectionRefs.current[st as BookStatus]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
 
   const total = books.length;
   const lendo = books.filter((b) => b.status === 'Lendo').length;
@@ -101,11 +123,11 @@ export const ShelfPage: React.FC = () => {
       {/* Filtros */}
       <div className="filters" id="filters">
         <div className="status-filters">
-          {['Todos', 'Quero ler', 'Lendo', 'Lido', 'Abandonado'].map((st) => (
+          {['Todos', 'Lendo', 'Quero ler', 'Lido', 'Abandonado'].map((st) => (
             <button
               key={st}
-              className={`pill ${selectedStatus === st ? 'on' : ''}`}
-              onClick={() => setSelectedStatus(st)}
+              className={`pill ${focusStatus === st ? 'on' : ''}`}
+              onClick={() => scrollToStatus(st)}
             >
               {st}
             </button>
@@ -128,15 +150,20 @@ export const ShelfPage: React.FC = () => {
           </select>
         </div>
 
-        <div className="filter-field filter-search">
-          <label htmlFor="filterSearch">Buscar título ou autor:</label>
-          <input
-            id="filterSearch"
-            type="search"
-            placeholder="Ex: Machado de Assis..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="filter-field">
+          <label htmlFor="authorSelect">Autor:</label>
+          <select
+            id="authorSelect"
+            value={selectedAuthor}
+            onChange={(e) => setSelectedAuthor(e.target.value)}
+          >
+            <option value="">Todos os autores</option>
+            {authors.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -159,55 +186,54 @@ export const ShelfPage: React.FC = () => {
         </span>
       </div>
 
-      {/* Prateleiras — quebram por largura, como no MVP 1 */}
+      {/* Prateleiras por status — quebram por largura, como no MVP 1 */}
       <div id="shelves" ref={shelvesRef}>
-        {(
-          [
-            { title: 'Minha estante', rows: activeRows, count: activeGroupBooks.length, read: false },
-            { title: 'Livros lidos', rows: readRows, count: readGroupBooks.length, read: true },
-          ] as const
-        ).map(
-          (group, gi) =>
-            group.rows.length > 0 && (
-              <section className="shelf-section" key={group.title}>
-                <h2>
-                  {group.title} <span>{group.count} livros</span>
-                </h2>
-                {group.rows.map((row, ri) => (
-                  <div className="shelf" key={`${group.title}-${ri}`}>
-                    <div className="shelf-head">
-                      {group.read ? 'Prateleira de lidos' : 'Prateleira'} {ri + 1}
-                      <i>{row.length} livros</i>
-                    </div>
-                    <div className="shelf-wood">
-                      {gi === 0 && ri === 0 && <ShelfCat />}
-                      <div className="books">
-                        {row.map((b, mi) => (
-                          <BookCard
-                            key={b.id}
-                            book={b}
-                            modeIndex={mi + ri * 3}
-                            onClick={(e) => {
-                              const rect = (e.currentTarget as HTMLElement)
-                                .querySelector('.cover-wrap')
-                                ?.getBoundingClientRect();
-                              setModalRect(rect ?? null);
-                              setActiveBook(b);
-                            }}
-                          />
-                        ))}
-                        <div className="deco">
-                          <div className="dbookend" />
-                          <div className="dstack" />
-                        </div>
+        {SHELF_SECTIONS.map(({ status, title }, si) => {
+          const rows = sectionRows[status];
+          if (!rows || rows.length === 0) return null;
+          const count = rows.reduce((acc, r) => acc + r.length, 0);
+          return (
+            <section
+              className="shelf-section"
+              key={status}
+              ref={(el) => {
+                sectionRefs.current[status] = el;
+              }}
+            >
+              <h2>
+                {title} <span>{count} {count === 1 ? 'livro' : 'livros'}</span>
+              </h2>
+              {rows.map((row, ri) => (
+                <div className="shelf" key={`${status}-${ri}`}>
+                  <div className="shelf-wood">
+                    {si === 0 && ri === 0 && <ShelfCat />}
+                    <div className="books">
+                      {row.map((b, mi) => (
+                        <BookCard
+                          key={b.id}
+                          book={b}
+                          modeIndex={mi + ri * 3}
+                          onClick={(e) => {
+                            const rect = (e.currentTarget as HTMLElement)
+                              .querySelector('.cover-wrap')
+                              ?.getBoundingClientRect();
+                            setModalRect(rect ?? null);
+                            setActiveBook(b);
+                          }}
+                        />
+                      ))}
+                      <div className="deco">
+                        <div className="dbookend" />
+                        <div className="dstack" />
                       </div>
                     </div>
-                    <div className="rail" />
                   </div>
-                ))}
-              </section>
-            )
-        )}
+                  <div className="rail" />
+                </div>
+              ))}
+            </section>
+          );
+        })}
 
         {filteredBooks.length === 0 && (
           <p id="empty" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ink2)' }}>
