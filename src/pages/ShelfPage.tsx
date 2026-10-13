@@ -7,6 +7,7 @@ import { ShelfCat } from '../components/common/ShelfCat';
 import { sortQueue, topQueuePosition } from '../core/business/queue';
 import { applyBookProgressUpdate } from '../core/business/progress';
 import { showToast } from '../core/business/share';
+import { QuoteOfDayCard } from '../components/quotes/QuoteOfDayCard';
 
 // MVP 1: cada prateleira comporta os livros que cabem na largura disponível
 const bookSize = (b: Book) => 86 + (hashHue(b.title || '') % 54);
@@ -206,6 +207,15 @@ export const ShelfPage: React.FC = () => {
           </select>
         </div>
       </div>
+
+      {/* Citação do dia — derivada das citações salvas, 100% local */}
+      <QuoteOfDayCard
+        books={books}
+        onOpenBook={(book, rect) => {
+          setModalRect(rect);
+          setActiveBook(book);
+        }}
+      />
 
       {/* Estatísticas rápidas da estante */}
       <div className="statsRow" id="statsShelf">

@@ -136,6 +136,137 @@ describe('Sync — deduplicação local × Drive', () => {
   });
 });
 
+describe('Sync — exclusão de citações (tombstones)', () => {
+  it('citação apagada localmente não ressuscita quando o remoto (mais novo) ainda a tem', async () => {
+    await putBooksBatch([
+      local({
+        id: 'l-del',
+        citacoes: [],
+        deletedCitacoes: [{ id: 'q1', ts: 900 }],
+        updatedAt: 100,
+      }),
+    ]);
+    await syncManager.initialize();
+
+    mockDownload.mockResolvedValue({
+      books: [
+        {
+          id: 'l-del',
+          title: 'Livro',
+          author: 'Autor',
+          status: 'Lendo',
+          citacoes: [{ id: 'q1', text: 'trecho', page: 10, ts: 500 }],
+          updatedAt: 200, // remoto mais novo — antes do fix, a citação voltava
+        },
+      ],
+      diary: [],
+    } as any);
+
+    await syncManager.pullFromDriveQuietly();
+    const b = syncManager.getBooks()[0];
+    expect(b.citacoes ?? []).toHaveLength(0);
+    expect(b.deletedCitacoes?.some((t) => t.id === 'q1')).toBe(true);
+  });
+
+  it('exclusão remota vence citação antiga local (propagação para outro aparelho)', async () => {
+    await putBooksBatch([
+      local({
+        id: 'l-prop',
+        citacoes: [{ id: 'q1', text: 'trecho', page: 10, ts: 500 }],
+        updatedAt: 100,
+      }),
+    ]);
+    await syncManager.initialize();
+
+    mockDownload.mockResolvedValue({
+      books: [
+        {
+          id: 'l-prop',
+          title: 'Livro',
+          author: 'Autor',
+          status: 'Lendo',
+          citacoes: [],
+          deletedCitacoes: [{ id: 'q1', ts: 900 }],
+          updatedAt: 200,
+        },
+      ],
+      diary: [],
+    } as any);
+
+    await syncManager.pullFromDriveQuietly();
+    const b = syncManager.getBooks()[0];
+    expect(b.citacoes ?? []).toHaveLength(0);
+  });
+
+  it('une citações novas dos dois lados e remove só a apagada', async () => {
+    await putBooksBatch([
+      local({
+        id: 'l-uni',
+        citacoes: [
+          { id: 'q-del', text: 'apagada', page: 1, ts: 100 },
+          { id: 'q-local', text: 'nova local', page: 5, ts: 300 },
+        ],
+        deletedCitacoes: [{ id: 'q-del', ts: 900 }],
+        updatedAt: 500,
+      }),
+    ]);
+    await syncManager.initialize();
+
+    mockDownload.mockResolvedValue({
+      books: [
+        {
+          id: 'l-uni',
+          title: 'Livro',
+          author: 'Autor',
+          status: 'Lendo',
+          citacoes: [
+            { id: 'q-del', text: 'apagada', page: 1, ts: 100 },
+            { id: 'q-remote', text: 'nova remota', page: 8, ts: 400 },
+          ],
+          updatedAt: 600,
+        },
+      ],
+      diary: [],
+    } as any);
+
+    await syncManager.pullFromDriveQuietly();
+    const b = syncManager.getBooks()[0];
+    const ids = (b.citacoes ?? []).map((c) => c.id).sort();
+    expect(ids).toEqual(['q-local', 'q-remote']); // q-del apagada, as duas novas unidas
+  });
+
+  it('citação editada depois do tombstone sobrevive (LWW por item)', async () => {
+    await putBooksBatch([
+      local({
+        id: 'l-lww',
+        citacoes: [],
+        deletedCitacoes: [{ id: 'q1', ts: 900 }],
+        updatedAt: 100,
+      }),
+    ]);
+    await syncManager.initialize();
+
+    mockDownload.mockResolvedValue({
+      books: [
+        {
+          id: 'l-lww',
+          title: 'Livro',
+          author: 'Autor',
+          status: 'Lendo',
+          // outro aparelho editou a citação depois da exclusão (não viu o tombstone)
+          citacoes: [{ id: 'q1', text: 'editada', page: 10, ts: 500, updatedAt: 1000 }],
+          updatedAt: 200,
+        },
+      ],
+      diary: [],
+    } as any);
+
+    await syncManager.pullFromDriveQuietly();
+    const b = syncManager.getBooks()[0];
+    expect(b.citacoes?.[0]?.text).toBe('editada');
+  });
+});
+
 describe('Sync — limpar dados locais', () => {
   it('resetLocalData apaga livros, diário e marca localWiped (semente não volta)', async () => {
     await putBooksBatch([local({ id: 'x1' })]);

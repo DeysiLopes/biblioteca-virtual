@@ -11,6 +11,7 @@ import {
   type OpenLibrarySearchResult,
 } from '../core/business/open-library';
 import { importBooksContent } from '../core/business/csv-parser';
+import { downloadBooksCSV } from '../core/business/csv-export';
 import { ensureCoverCached } from '../core/storage/cover-cache';
 import { ReelScanner } from '../components/scan/ReelScanner';
 import { ScannedBook } from '../core/business/llm/types';
@@ -153,6 +154,15 @@ export const AddBookPage: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleExportCSV = () => {
+    if (!books.length) {
+      alert('A biblioteca está vazia — nada pra exportar ainda.');
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBooksCSV(books, `minha-biblioteca-${stamp}.csv`);
   };
 
   const handleImportBatch = async () => {
@@ -671,21 +681,35 @@ export const AddBookPage: React.FC = () => {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleImportBatch}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 8,
-              background: 'var(--accent)',
-              color: '#17100f',
-              fontWeight: 800,
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Processar e Importar Livros
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={handleImportBatch}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                background: 'var(--accent)',
+                color: '#17100f',
+                fontWeight: 800,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Processar e Importar Livros
+            </button>
+            <button
+              type="button"
+              className="pill"
+              onClick={handleExportCSV}
+              title="Baixa todos os livros da biblioteca em CSV (Excel/Sheets/Notion)"
+            >
+              ⬇️ Exportar CSV ({books.length})
+            </button>
+          </div>
+          <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--ink2)' }}>
+            O CSV traz todos os campos do livro; citações saem como texto legível. Para
+            restauração completa (IDs, diário, timestamps), use o backup JSON no header.
+          </p>
         </div>
       )}
 

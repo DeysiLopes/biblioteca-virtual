@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { parseScannedBooks } from '../core/business/llm/parse';
 import { callLLM } from '../core/business/llm/providers';
+import { extractBooksFromLink } from '../core/business/llm/extract';
 import { ExtractedFrame } from '../core/business/llm/types';
 
 const frame: ExtractedFrame = { dataUrl: 'data:image/jpeg;base64,QUJD', timeSec: 3 };
@@ -128,5 +129,74 @@ describe('providers — formato da chamada', () => {
       )
     );
     await expect(callLLM('gemini', 'bad', [frame])).rejects.toThrow('401');
+  });
+});
+
+describe('extractBooksFromLink — legenda resolve sem IA', () => {
+  const jinaResponse = (caption: string) =>
+    new Response(
+      JSON.stringify({
+        data: { title: 'post', description: caption, metadata: {} },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    );
+
+  it('legenda com lista "Título — Autor" devolve os livros sem chamar o LLM — nem precisa de chave', async () => {
+    const caption =
+      'Os livros:\n1️⃣ Duna — Frank Herbert\n2️⃣ Neuromancer — William Gibson';
+    const spy = vi.fn(async (u: any) => {
+      const s = String(u);
+      if (s.includes('r.jina.ai')) return jinaResponse(caption);
+      return new Response('nope', { status: 500 }); // imagem falha — ok
+    });
+    vi.stubGlobal('fetch', spy);
+
+    // sem apiKey nenhuma — a legenda resolveu sozinha
+    const res = await extractBooksFromLink({ provider: 'gemini', apiKey: '' }, 'https://www.instagram.com/reel/X/');
+    expect(res.books.map((b) => b.title)).toEqual(['Duna', 'Neuromancer']);
+    expect(res.note).toContain('nem precisei chamar a IA');
+    const llmCalls = spy.mock.calls.filter(([u]: any) =>
+      String(u).match(/googleapis|openai|anthropic/)
+    );
+    expect(llmCalls).toHaveLength(0);
+  });
+
+  it('legenda sem lista → avisa no onNote e cai pro LLM de texto', async () => {
+    const notes: string[] = [];
+    const spy = vi.fn(async (u: any) => {
+      const s = String(u);
+      if (s.includes('r.jina.ai')) return jinaResponse('só hashtags #livros #books');
+      if (s.includes('googleapis'))
+        return new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: '[{"title":"Achado"}]' }] } }],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      return new Response('x', { status: 500 });
+    });
+    vi.stubGlobal('fetch', spy);
+
+    const res = await extractBooksFromLink(
+      { provider: 'gemini', apiKey: 'k' },
+      'https://www.instagram.com/reel/X/',
+      (n) => notes.push(n)
+    );
+    expect(notes[0]).toContain('scan mais minucioso');
+    expect(res.books[0].title).toBe('Achado');
+  });
+
+  it('sem livros na legenda E sem chave → erro orienta a configurar', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (u: any) =>
+        String(u).includes('r.jina.ai')
+          ? jinaResponse('só hashtags')
+          : new Response('x', { status: 500 })
+      )
+    );
+    await expect(
+      extractBooksFromLink({ provider: 'gemini', apiKey: '' }, 'https://www.instagram.com/reel/X/')
+    ).rejects.toThrow('API key');
   });
 });

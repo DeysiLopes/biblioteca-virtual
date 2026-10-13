@@ -1,4 +1,5 @@
 import { ExtractedFrame } from './types';
+import { getMetaValue } from '../../storage/idb';
 import {
   extractFramesFromImageBlob,
   extractFramesFromVideoBlob,
@@ -13,10 +14,30 @@ export interface ResolvedReel {
   videoUrl?: string;
 }
 
+const META_REEL_PROXY = 'reelProxy';
+
 /**
- * O Instagram bloqueia fetch direto por CORS. Camada 1: r.jina.ai, que lê a
- * página e devolve legenda + capa em JSON (CORS liberado). Camada 2 (só se a
- * primeira falhar): proxies públicos genéricos — instáveis por natureza.
+ * Proxy próprio (Cloudflare Worker, workers/reel-proxy.js) — depois do
+ * deploy na conta da dona do app, a URL publicada entra aqui e o proxy
+ * funciona pra todo mundo, invisível, sem configuração nenhuma na tela.
+ * Meta `reelProxy` e `VITE_REEL_PROXY` continuam como override para dev
+ * e para quem hospeda a própria instância do app.
+ */
+const DEFAULT_REEL_PROXY = ''; // ex.: 'https://reel-proxy.deysilopes.workers.dev'
+
+async function workerProxyUrl(url: string): Promise<string | null> {
+  const meta = (await getMetaValue<string>(META_REEL_PROXY))?.trim();
+  const base =
+    meta ||
+    (import.meta.env.VITE_REEL_PROXY as string | undefined)?.trim() ||
+    DEFAULT_REEL_PROXY;
+  if (!base) return null;
+  return `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(url)}`;
+}
+
+/**
+ * O Instagram bloqueia fetch direto por CORS. Ordem: worker próprio (se
+ * configurado) → proxies públicos genéricos — instáveis por natureza.
  */
 const PROXIES: Array<(url: string) => string> = [
   (u) => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
@@ -25,7 +46,19 @@ const PROXIES: Array<(url: string) => string> = [
 ];
 
 export async function fetchViaProxy(url: string): Promise<Response> {
+  const worker = await workerProxyUrl(url);
   let lastError: unknown;
+
+  if (worker) {
+    try {
+      const res = await fetch(worker, { signal: AbortSignal.timeout(25000) });
+      if (res.ok) return res;
+      lastError = new Error(`worker HTTP ${res.status}`);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
   for (const wrap of PROXIES) {
     try {
       const res = await fetch(wrap(url), { signal: AbortSignal.timeout(25000) });
@@ -36,7 +69,7 @@ export async function fetchViaProxy(url: string): Promise<Response> {
     }
   }
   throw new Error(
-    'Não consegui acessar o link (os proxies públicos falharam). Tenta de novo ou envia o vídeo/prints direto.'
+    'Não consegui acessar o link (os proxies falharam). Tenta de novo ou envia o vídeo/prints direto.'
   );
 }
 

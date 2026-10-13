@@ -1,6 +1,7 @@
 import { getMetaValue, setMetaValue } from '../../storage/idb';
 import { callLLM, callLLMCaption } from './providers';
 import { parseScannedBooks } from './parse';
+import { parseCaptionBooks } from './caption-parse';
 import { ExtractedFrame, LLMProvider, ScannedBook } from './types';
 import {
   extractFramesFromReel,
@@ -70,16 +71,17 @@ export interface LinkScanResult {
 }
 
 /**
- * Pipeline do link: resolve → legenda via Jina → LLM de texto (com a capa
- * como frame extra). Sem legenda, cai pro pipeline de frames/vídeo.
+ * Pipeline do link: resolve → legenda via Jina. Se a legenda já lista os
+ * livros ("Título — Autor" numerado), o parser local resolve sem chamar a
+ * IA. Só cai pro LLM quando a legenda não entrega nada — texto primeiro,
+ * frames do vídeo/capa como fallback. `onNote` avisa a UI quando o scan
+ * minucioso com IA começa.
  */
 export async function extractBooksFromLink(
   config: LLMConfig,
-  url: string
+  url: string,
+  onNote?: (note: string) => void
 ): Promise<LinkScanResult> {
-  if (!config.apiKey.trim()) {
-    throw new Error('Configure uma API key do seu LLM para usar o scan.');
-  }
   const reel = await resolveReelLink(url);
 
   // capa do post como contexto visual extra
@@ -93,16 +95,38 @@ export async function extractBooksFromLink(
     }
   }
 
-  // 1) legenda → LLM de texto (caminho principal — reels literários
-  //    costumam listar "Título — Autor" na própria legenda)
+  // 1) legenda → parser local (zero custo de IA)
   if (reel.caption?.trim()) {
-    const raw = await callLLMCaption(config.provider, config.apiKey, reel.caption, frames);
-    const books = parseScannedBooks(raw);
-    if (books.length) return { books, frames };
-    // legenda sem livros identificáveis → tenta a imagem/vídeo abaixo
+    const local = parseCaptionBooks(reel.caption);
+    if (local.length) {
+      return {
+        books: local,
+        frames,
+        note: 'Achei os livros na própria legenda — nem precisei chamar a IA ✨',
+      };
+    }
   }
 
-  // 2) sem legenda útil → frames da capa ou do vídeo
+  if (!config.apiKey.trim()) {
+    throw new Error(
+      'Não achei livros na legenda e o scan minucioso precisa de IA — configure sua API key.'
+    );
+  }
+
+  // 2) legenda existe mas sem lista clara → LLM lê o texto (com a capa junto)
+  if (reel.caption?.trim()) {
+    onNote?.('Não encontrei os livros listados na legenda — rodando um scan mais minucioso com a IA…');
+    const raw = await callLLMCaption(config.provider, config.apiKey, reel.caption, frames);
+    const books = parseScannedBooks(raw);
+    if (books.length) {
+      return { books, frames, note: 'A legenda não tinha a lista — a IA extraiu do texto.' };
+    }
+    // LLM de texto não achou → tenta a imagem/vídeo abaixo
+  } else {
+    onNote?.('Esse post não tem legenda útil — a IA vai analisar a imagem/vídeo…');
+  }
+
+  // 3) frames da capa ou do vídeo → LLM de visão
   if (!frames.length) {
     const { frames: extracted, note } = await extractFramesFromReel(reel);
     frames.push(...extracted);
@@ -112,5 +136,5 @@ export async function extractBooksFromLink(
     throw new Error('Não consegui ler nada desse link. Tenta enviar o vídeo/prints.');
   }
   const books = parseScannedBooks(await callLLM(config.provider, config.apiKey, frames));
-  return { books, frames, note: reel.caption ? undefined : 'Sem legenda — usei a imagem do reel.' };
+  return { books, frames, note: reel.caption ? 'Legenda sem lista — a IA leu a imagem do post.' : 'Sem legenda — a IA leu a imagem do post.' };
 }

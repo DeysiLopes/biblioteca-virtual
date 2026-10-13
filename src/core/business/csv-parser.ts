@@ -27,39 +27,46 @@ export function detectDelimiter(headerLine: string): string {
 
 export function parseCSVText(text: string, delimiter: string): string[][] {
   const rows: string[][] = [];
-  const lines = text.trim().split(/\r?\n/);
+  // Varre o texto inteiro de uma vez: aspas podem conter quebras de linha
+  // reais (resenhas, comentários) — separar por linha antes quebraria isso.
+  let row: string[] = [];
+  let cur = '';
+  let inQuotes = false;
 
-  for (const line of lines) {
-    const row: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else {
-            inQuotes = false;
-          }
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cur += '"';
+          i++;
         } else {
-          cur += ch;
+          inQuotes = false;
         }
-      } else if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === delimiter) {
-        row.push(cur);
-        cur = '';
       } else {
         cur += ch;
       }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delimiter) {
+      row.push(cur);
+      cur = '';
+    } else if (ch === '\r') {
+      // ignora CR — \r\n é tratado pelo \n abaixo
+    } else if (ch === '\n') {
+      row.push(cur);
+      cur = '';
+      if (row.some(c => c.trim() !== '')) {
+        rows.push(row.map(c => c.trim()));
+      }
+      row = [];
+    } else {
+      cur += ch;
     }
-    row.push(cur);
-    if (row.some(c => c.trim() !== '')) {
-      rows.push(row.map(c => c.trim()));
-    }
+  }
+  row.push(cur);
+  if (row.some(c => c.trim() !== '')) {
+    rows.push(row.map(c => c.trim()));
   }
 
   return rows;
@@ -175,6 +182,8 @@ export function importBooksContent(
     const title = pick(row, ['titulo', 'title', 'nome', 'name', 'book', 'livro', 'book title', 'titulo do livro']) || row[0];
     const author = pick(row, ['autor', 'author', 'autora', 'writer', 'author name', 'autor (a)']) || row[1] || '';
     const paginas = pick(row, ['paginas', 'pages', 'pagina', 'pags', 'no of pages', 'number of pages', 'page count']);
+    const paginasLidas = pick(row, ['paginas_lidas', 'paginaslidas', 'pages read', 'pages_read', 'lidas']);
+    const cover = pick(row, ['capa', 'cover', 'cover url', 'imagem']);
     const nota = pick(row, ['nota', 'rating', 'my rating', 'score', 'estrelas', 'stars', 'avaliacao']);
     const status = pick(row, ['status', 'estado', 'situacao', 'state']);
     const genero = pick(row, ['genero', 'genre', 'categorias', 'category', 'shelf', 'bookshelves', 'categories']);
@@ -191,6 +200,8 @@ export function importBooksContent(
       title,
       author,
       paginas,
+      paginasLidas,
+      cover,
       nota,
       status,
       genero,

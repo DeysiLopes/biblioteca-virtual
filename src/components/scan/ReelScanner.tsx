@@ -94,7 +94,7 @@ export const ReelScanner: React.FC<ReelScannerProps> = ({ books, onAdd }) => {
     setPhase('scanning');
     try {
       await saveLLMConfig(config);
-      const result = await extractBooksFromLink(config, url);
+      const result = await extractBooksFromLink(config, url, setNote);
       setFrames(result.frames);
       setNote(result.note ?? null);
       if (!result.books.length) {

@@ -1,63 +1,51 @@
 # TODO — Integrações e novas funcionalidades da Minha Biblioteca
 
-Status: execução iniciada em 2026-10-12 pelas correções do app. CSV, IA/vídeos e funcionalidades complementares continuam pendentes; a integração por ISBN ficará por último e exige estudo separado.
+Status: rodada de 2026-10-13 concluiu o bug do sync de citações, a Citação do dia, a exportação CSV e deixou o Cloudflare Worker pronto para deploy. Pendem: deploy do worker (ação da pessoa usuária), ISBN (última etapa) e avaliações da seção 11.
+
+## Concluído em 2026-10-13 (rodada final do dia)
+
+- **Sync de exclusão de citações — corrigido de verdade.** Causa raiz: `deletedCitacoes` era gravado mas nunca aplicado no merge — a citação apagada ressuscitava quando o outro lado vencia por `updatedAt`. Agora `mergeBookFields` reconcilia `citacoes` item a item (união por id, LWW por `updatedAt`/`ts`) e aplica a união dos tombstones dos dois aparelhos. 4 testes novos em `src/test/sync-dedupe.test.ts`.
+- **Citação do dia implementada.** `src/core/business/quote-of-day.ts`: seleção determinística por hash da data local (mesma frase em todos os aparelhos, 100% offline, ignora tombstones). Cartão "✨ Citação do dia" no topo da Estante (clique abre o livro). Notificação diária: botão "Lembrete" no header ativa `meta.quoteReminder`; o app dispara a notificação 1x/dia ao ser aberto (`maybeNotifyQuoteOfDay`, via SW `showNotification` no Android/PWA). Limitação honesta: PWA estático não tem push agendado sem servidor — a frase chega ao abrir o app, não numa hora fixa com ele fechado.
+- **Exportação CSV implementada.** `src/core/business/csv-export.ts` + botão "⬇️ Exportar CSV" na aba Importar de `/books`. Delimitador `;` (Excel pt-BR), UTF-8 com BOM, aspas escapadas, anti CSV-injection (`'=`/`'+`/`'-`/`'@`), ISBN textual, citações como "p.42 — texto" (ignorando tombstones). `parseCSVText` corrigido para campos citados multilinha — resenhas com `\n` voltam inteiras no round-trip (testado). Backup JSON segue sendo a restauração integral; confirmado que o payload não inclui `meta`/credenciais.
+- **Cloudflare Worker pronto pra deploy.** `workers/reel-proxy.js` escrito (allowlist instagram/cdninstagram/fbcdn/ytimg, CORS `*`, User-Agent de browser). O app já tenta o worker antes dos proxies públicos: config via campo "Proxy do reel" na aba Scan (meta `reelProxy`, local) ou `VITE_REEL_PROXY` no `.env`. Teste cobre a prioridade na cadeia.
 
 ## Status atual — Scan de reels com IA (implementado em 2026-10-13)
 
-**Feito e verificado:** aba "🎬 Scan de reel" é a primeira em `/books`. O fluxo por **link** funciona:
+**Feito e verificado:** aba "🎬 Scan de reel" é a primeira em `/books`. O fluxo por **link** funciona (ordem atualizada em 2026-10-13 noite — legenda resolve local, sem gastar IA):
 
 ```
-link → r.jina.ai (legenda + capa, CORS liberado) → LLM-texto → revisão → "Quero ler" → enriquece ISBN/capa
-        └ falhou? → proxy CORS → video_url/og:image → frames → LLM-visão
+link → r.jina.ai (legenda + capa, CORS liberado)
+        ├─ legenda lista "Título — Autor"? → parser local (caption-parse.ts) → revisão ✨ zero chamada de IA
+        ├─ legenda sem lista → aviso "scan mais minucioso" → LLM-texto → revisão
+        └─ falhou? → proxy CORS → video_url/og:image → frames → LLM-visão
              └ falhou? → upload de vídeo/prints (alternativa na mesma aba)
 ```
+
+- **Legenda resolve sozinha:** `caption-parse.ts` extrai listas numeradas/emoji ("1️⃣ Título — Autor", "2. Título - Autor", "Título by Autor", "|"). Conservador: linha sem separador não vira livro. Funciona **sem API key** quando a legenda entrega tudo — a chave só é exigida quando o scan minucioso é necessário.
+- **Aviso durante o scan:** `onNote` callback mostra "Não encontrei os livros na legenda — rodando um scan mais minucioso com a IA…" enquanto a chamada acontece.
 
 - Verificado com link real de reel: legenda com livros → 4 livros identificados, dedupe "já na biblioteca" ✓
 - Reel sem livros na legenda → usa a **capa** (via `images.weserv.nl`, CORS ok) como frame; só 1 imagem, marcas `uncertain` quando a leitura é incerta
 - Chave do LLM (Gemini/OpenAI/Claude) fica no campo da UI ou `VITE_LLM_API_KEY`/`VITE_GEMINI_API_KEY` no `.env`; salva só no IndexedDB `meta`, nunca no Drive
 - 90 testes, build e `git diff --check` limpos. Arquivos: `src/core/business/llm/*` e `src/components/scan/ReelScanner.tsx`
 
-### ⭐ Próximo passo: Cloudflare Worker próprio (a peça que falta)
+### ⭐ Próximo passo: publicar o Cloudflare Worker (única ação manual restante)
 
-**Por quê:** para reels que só mostram os livros no vídeo (sem legenda), a IA hoje lê apenas a **capa**. Os frames do mp4 precisam do `video_url`, que só vem via proxy — e os proxies públicos (allorigins/cors.lol/codetabs) estavam todos fora do ar em 2026-10-13; o `corsproxy.org` devolve conteúdo adulterado (removido da cadeia).
+**Estado:** o código está pronto dos dois lados — `workers/reel-proxy.js` no repo e o app já o tenta primeiro na cadeia (`reelProxy`/`VITE_REEL_PROXY`). Só falta publicar o worker na conta Cloudflare da pessoa usuária — ~5 min, sem código:
 
-**O que fazer:**
+1. [ ] `dash.cloudflare.com` → Workers & Pages → Create Worker
+2. [ ] Colar o conteúdo de `workers/reel-proxy.js` no editor → **Deploy**
+3. [ ] Copiar a URL publicada (`https://reel-proxy.<sub>.workers.dev`)
+4. [ ] Colar a URL em `DEFAULT_REEL_PROXY` em `src/core/business/llm/reel-link.ts` — a partir daí funciona pra todo mundo, invisível, sem campo na tela
+5. [ ] Testar de verdade com o reel `https://www.instagram.com/reel/DeVKPZyympI/` (livros só no vídeo) — esperado: `video_url` → mp4 → ~8 frames → LLM lê os títulos, não só a capa
 
-- [ ] Criar conta/projeto no Cloudflare (plano free, 100k req/dia) e publicar um Worker de ~30 linhas que recebe `?url=`, busca o HTML (com `User-Agent` de browser) e devolve com `Access-Control-Allow-Origin: *`
-- [ ] Reaproveitar o Worker também para baixar o `video_url` (mp4) e a capa `scontent*.cdninstagram.com` — bytes passam direto com CORS
-- [ ] Salvar a URL do worker em `VITE_REEL_PROXY` (`.env`, dev) e via meta `reelProxy` (config do usuário) — `fetchViaProxy`/`fetchImage` devem tentar o worker antes dos proxies públicos (`src/core/business/llm/reel-link.ts`)
-- [ ] Opcional: restringir o worker a um allowlist de hosts (`instagram.com`, `cdninstagram.com`, `fbcdn.net`, `ytimg.com`) para não virar proxy aberto
-- [ ] Testar de verdade com o reel `https://www.instagram.com/reel/DeVKPZyympI/` (livros só no vídeo) — esperado: `video_url` → mp4 → ~8 frames → LLM lê os títulos
+### ✅ Citação do dia ("frase do dia") — implementada
 
-**Rascunho do worker (colar no editor do Cloudflare):**
+Detalhes na seção "Concluído" acima. Decisões tomadas: seleção **determinística por data** (mesma frase nos aparelhos), cartão no topo da **Estante** (web e PWA), notificação **uma vez por dia ao abrir o app** via botão "Lembrete". Decisões que ficaram em aberto para futuras sessões:
 
-```js
-export default {
-  async fetch(req) {
-    const url = new URL(req.url).searchParams.get('url');
-    const ok = url && /(^|\.)(instagram\.com|cdninstagram\.com|fbcdn\.net|ytimg\.com)$/.test(new URL(url).hostname);
-    const headers = { 'Access-Control-Allow-Origin': '*' };
-    if (!ok) return new Response('host não permitido', { status: 403, headers });
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36' } });
-    return new Response(res.body, { status: res.status, headers: { ...headers, 'content-type': res.headers.get('content-type') ?? 'application/octet-stream' } });
-  },
-};
-```
-
-### ⭐ Depois do Cloudflare: Citação do dia ("frase do dia")
-
-Próxima feature logo após o Worker. Ideia: as citações que a pessoa salvou voltam pra ela como uma "frase do dia" — no app instalado (mobile) e/ou na versão web. Aproveita o fichário existente em vez de pedir novos dados.
-
-- [ ] Definir a experiência em cada superfície:
-  - **Web/app aberto**: cartão "✨ Citação do dia" — candidatos: topo do Diário, seção da Estante ou modal discreto ao abrir o app (decidir o ponto menos intrusivo).
-  - **Mobile/PWA**: notificação diária com a citação — o SW já tem mensagens `notify`/`schedule` e o botão "Lembrete" no header; avaliar `NotificationTrigger` (experimental, só Android/Chrome) vs lembrete ao abrir o app.
-- [ ] Regra de seleção da citação do dia: aleatória entre todas as `citacoes` da biblioteca? Ou rodízio determinístico por data (ex.: hash do dia → índice) para todos os aparelhos mostrarem a mesma frase?
-- [ ] Exibir texto da citação + título/autor do livro + página; talvez link direto pro modal do livro ou pra página da citação no `CitacoesModal`.
-- [ ] Respeitar a preferência de som/animação e não notificar de madrugada; escolher horário razoável (manhã/noite) ou configurável.
-- [ ] Fallback sem citações salvas: esconder o cartão ou mostrar uma frase convidando a salvar a primeira citação.
-- [ ] Cuidado com o sync: a "citação do dia" é derivada dos dados locais — não criar entidade persistida nem poluir o merge entre aparelhos (exceto talvez a config de horário/preferência no `meta`, que é local por aparelho).
-- [ ] Testar: seleção determinística por data, biblioteca sem citações, livro apagado depois de salvar a citação, notificação com permissão negada e `prefers-reduced-motion`.
-- [ ] Não depender de rede: a frase do dia deve funcionar 100% offline com o IndexedDB.
+- [ ] Horário configurável ou notificação agendada de verdade (precisaria de backend/push ou `NotificationTrigger` quando amadurecer)
+- [ ] Cartão também no Diário? Hoje vive só na Estante
+- [ ] Navegar direto para a página da citação no `CitacoesModal` em vez do modal do livro?
 
 ## Retomar esta sessão
 
@@ -69,9 +57,13 @@ devin -r excellent-racer
 
 Ao retomar, ler este `todo.md` e escolher a próxima prioridade antes de implementar.
 
-## Correções e melhorias pendentes do app
+## Correções e melhorias do app — histórico concluído
 
-### Filtro de gênero e dropdown
+### ✅ Filtro de gênero e dropdown (concluído)
+
+Implementado: busca por texto removida; filtros são dois dropdowns — Gênero e Autor (populado com os autores reais da biblioteca, ordem pt-BR). Botões de status viraram atalhos de rolagem pras seções. `ShelfPage.tsx`.
+
+O relato original abaixo ficou como histórico:
 
 Problema relatado: o filtro de gênero deixou de funcionar. Além da correção, a seleção de gênero deve virar um dropdown com o mesmo estilo do seletor de livros do modal unificado.
 
@@ -86,7 +78,9 @@ Problema relatado: o filtro de gênero deixou de funcionar. Além da correção,
 - [ ] Validar aparência e uso por teclado no Edge, no PWA e em telas pequenas.
 - [ ] Confirmar que a mudança apenas filtra a visualização, sem alterar progresso, dashboard ou informações dos livros.
 
-### Prateleiras de livros lidos no final da página
+### ✅ Prateleiras de livros lidos no final da página (concluído)
+
+Implementado: a Estante virou seções por status — "Lendo agora", "Quero ler" (com fila `filaPosicao` + drag-and-drop), "Lidos" e "Abandonados" por último. Sem mais "Prateleira N".
 
 Na aba Estante, livros com status “Lido” devem ficar em uma seção de prateleiras no final da página, separados dos demais livros, mas continuar disponíveis para consultar e abrir novamente.
 
@@ -100,7 +94,11 @@ Na aba Estante, livros com status “Lido” devem ficar em uma seção de prate
 - [ ] Preservar IDs, progresso, datas, comentários, notas, resenhas, citações e registros: a mudança é de organização visual, não exclusão ou novo cadastro.
 - [ ] Testar mudança de status, consulta de livros já lidos, recarga/sincronização e layout em telas pequenas.
 
-### Exclusão e sincronização das citações
+### ✅ Exclusão e sincronização das citações (corrigido em 2026-10-13)
+
+Causa raiz encontrada e corrigida: os tombstones `deletedCitacoes` eram gravados mas **nunca aplicados no merge** — citação apagada ressuscitava se o outro lado vencesse por `updatedAt`. `mergeBookFields` agora reconcilia `citacoes` item a item + união de tombstones (`sync-manager.ts`). 4 testes novos cobrem: não ressuscitar, propagação, união parcial e LWW pós-tombstone.
+
+O relato original abaixo ficou como histórico:
 
 Problema relatado: a resenha apagada foi atualizada, mas a exclusão de uma citação não foi refletida corretamente no fichário do app. Verificar tanto a exclusão local quanto a sincronização, especialmente ao apagar a última citação.
 
@@ -199,9 +197,9 @@ Fluxo proposto: link → acesso autorizado ao vídeo → amostragem de frames �
 - [ ] Informar quais dados serão enviados ao provedor de IA e definir descarte/retenção de mídia temporária.
 - [ ] Não criar infraestrutura, contas, assinaturas ou consumo pago nesta etapa de planejamento.
 
-## 10. Exportação completa da biblioteca em CSV
+## 10. Exportação completa da biblioteca em CSV ✅ (implementada em 2026-10-13)
 
-Atualmente o app importa CSV e exporta backup JSON; ainda não possui exportação de livros em CSV.
+Implementada: `csv-export.ts` + botão na aba Importar. Delimitador `;`, UTF-8+BOM, escape de aspas, anti CSV-injection, multilinha citado, ISBN textual, citações legíveis (sem tombstones). `parseCSVText` corrigido pra campos citados com quebras de linha; round-trip testado. O que sobrou como avaliação futura:
 
 - [ ] Adicionar exportação de todos os livros da biblioteca, não somente dos itens visíveis no filtro atual.
 - [ ] Avaliar também a opção de exportar apenas a TBR ou a seleção filtrada.
@@ -233,13 +231,13 @@ Atualmente o app importa CSV e exporta backup JSON; ainda não possui exportaç�
 
 Ordem inicial para avaliação, sujeita à escolha da pessoa usuária:
 
-1. Corrigir a exclusão/sincronização das citações, sem alterar os dados reais de teste por tentativa.
-2. Corrigir o filtro de gênero e convertê-lo em dropdown.
-3. Organizar os livros lidos em prateleiras no final da Estante.
-4. Melhorar o ciclo CSV: compatibilidade com MyReelReads e exportação da biblioteca.
-5. Prototipar reconhecimento de livros em imagens/frames enviados pela pessoa usuária, medindo falsos positivos e livros não detectados.
-6. Validar acesso autorizado a Reels/TikTok e processamento completo de links com IA. Backend, provedor e custos precisam de decisão/aprovação antes de implementar.
-7. Avaliar tags, séries, filtros e demais recursos complementares.
+1. ~~Corrigir a exclusão/sincronização das citações~~ ✅ 2026-10-13 (tombstones aplicados no merge).
+2. ~~Corrigir o filtro de gênero e convertê-lo em dropdown~~ ✅ (gênero + autor em dropdowns).
+3. ~~Organizar os livros lidos em prateleiras no final da Estante~~ ✅ (seções por status, lidos/antepenúltima, abandonados últimos).
+4. ~~Melhorar o ciclo CSV: compatibilidade com MyReelReads e exportação da biblioteca~~ ✅ 2026-10-13 (exportação implementada; compatibilidade com formatos externos segue como avaliação fina na seção 10).
+5. Prototipar reconhecimento de livros em imagens/frames enviados pela pessoa usuária, medindo falsos positivos e livros não detectados. ✅ parcial — scan por link e upload funcionando; medições de precisão/custo pendentes.
+6. Validar acesso autorizado a Reels/TikTok e processamento completo de links com IA. ✅ parcial — link + legenda + capa funcionando; frames de vídeo dependem do deploy do Cloudflare Worker (seção ⭐ acima).
+7. Avaliar tags, séries, filtros e demais recursos complementares — seção 11 continua aberta.
 8. Por último, concluir o estudo de [todo-isbn.md](todo-isbn.md) e decidir se e como implementar a integração por ISBN.
 
 - [ ] Montar uma amostra autorizada com vídeos de um livro, vários livros, capas pouco nítidas, ausência de capa, áudio apenas e títulos em diferentes idiomas.

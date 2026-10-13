@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseReelUrl, resolveReelLink } from '../core/business/llm/reel-link';
+import {
+  fetchViaProxy,
+  parseReelUrl,
+  resolveReelLink,
+} from '../core/business/llm/reel-link';
+import { setMetaValue, clearStore } from '../core/storage/idb';
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.restoreAllMocks();
+  await clearStore('meta');
 });
 
 describe('parseReelUrl', () => {
@@ -82,6 +88,30 @@ describe('resolveReelLink', () => {
     await expect(
       resolveReelLink('https://www.instagram.com/reel/ABC123/')
     ).rejects.toThrow('público');
+  });
+
+  it('usa o worker próprio antes dos proxies públicos quando configurado', async () => {
+    await setMetaValue('reelProxy', 'https://reel-proxy.eu.workers.dev');
+    const html = `<html><head></head><body><script>
+      {"x":{"video_url":"https:\\/\\/scontent.cdninstagram.com\\/v\\/reel.mp4"}}
+    </script></body></html>`;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (u: any) => {
+        const s = String(u);
+        calls.push(s);
+        if (s.includes('r.jina.ai')) return new Response('err', { status: 500 });
+        return new Response(html, { status: 200 });
+      })
+    );
+
+    const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
+    expect(reel.videoUrl).toContain('scontent.cdninstagram.com');
+    // o worker foi a primeira (e única) fonte de proxy chamada
+    const proxied = calls.filter((s) => !s.includes('r.jina.ai'));
+    expect(proxied).toHaveLength(1);
+    expect(proxied[0]).toContain('reel-proxy.eu.workers.dev');
   });
 
   it('link inválido rejeita antes de buscar', async () => {

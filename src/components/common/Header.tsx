@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLibrary } from '../../hooks/useLibrary';
 import { syncManager } from '../../core/storage/sync-manager';
 import { showToast } from '../../core/business/share';
+import {
+  maybeNotifyQuoteOfDay,
+  setQuoteReminder,
+} from '../../core/business/quote-of-day';
 
 export const Header: React.FC = () => {
   const { isAuthenticated, user, login, logout, isMock } = useAuth();
-  const { exportBackup } = useLibrary();
+  const { exportBackup, books } = useLibrary();
+
+  // Lembrete ativo? Entrega a citação do dia como notificação, 1x por dia.
+  useEffect(() => {
+    if (books.length) maybeNotifyQuoteOfDay(books).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [books.length > 0]);
 
   const handleWipeLocal = async () => {
     const ok = window.confirm(
@@ -37,7 +47,10 @@ export const Header: React.FC = () => {
     }
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
-      alert('Lembrete diário ativado para as 20:00!');
+      await setQuoteReminder(true);
+      alert(
+        'Lembrete ativado! ✨\n\nTodo dia, ao abrir o app, você recebe uma citação do dia tirada das que você salvou.'
+      );
     } else {
       alert('Permissão para notificações não foi concedida.');
     }

@@ -1,4 +1,4 @@
-import { Book } from '../models/book';
+import { Book, Citacao, DeletedCitacao } from '../models/book';
 import { DiaryEntry } from '../models/diary';
 import { UserLibraryData } from '../models/user-data';
 import {
@@ -33,7 +33,58 @@ function mergeBookFields(local: Book, remote: Book): Book {
       (merged as any)[k] = local[k];
     }
   });
+  const cit = mergeCitacoes(local, remote);
+  if (cit) {
+    merged.citacoes = cit.citacoes;
+    merged.deletedCitacoes = cit.deletedCitacoes;
+  }
   return merged;
+}
+
+/**
+ * Reconcilia citações dos dois lados: união por id (o item com o último
+ * toque mais recente vence) menos os tombstones unidos dos dois aparelhos.
+ * Sem isso, uma exclusão se perde quando o outro lado vence o merge por
+ * `updatedAt` do livro — a citação apagada ressuscita.
+ * Um tombstone só apaga a citação se ela não foi editada depois da
+ * exclusão (LWW por item).
+ */
+function mergeCitacoes(
+  local: Book,
+  remote: Book
+): { citacoes?: Citacao[]; deletedCitacoes?: DeletedCitacao[] } | null {
+  if (!local.citacoes && !remote.citacoes && !local.deletedCitacoes && !remote.deletedCitacoes) {
+    return null;
+  }
+
+  const tombstones = new Map<string, number>();
+  [...(local.deletedCitacoes ?? []), ...(remote.deletedCitacoes ?? [])].forEach((t) => {
+    if (!t?.id) return;
+    tombstones.set(t.id, Math.max(tombstones.get(t.id) ?? 0, t.ts ?? 0));
+  });
+
+  const byId = new Map<string, Citacao>();
+  [...(local.citacoes ?? []), ...(remote.citacoes ?? [])].forEach((c) => {
+    if (!c?.id) return;
+    const cur = byId.get(c.id);
+    if (!cur || (c.updatedAt ?? c.ts ?? 0) >= (cur.updatedAt ?? cur.ts ?? 0)) {
+      byId.set(c.id, c);
+    }
+  });
+
+  const citacoes = [...byId.values()]
+    .filter((c) => {
+      const del = tombstones.get(c.id);
+      return del === undefined || del < (c.updatedAt ?? c.ts ?? 0);
+    })
+    .sort((a, b) => a.ts - b.ts);
+
+  const deletedCitacoes = [...tombstones.entries()].map(([id, ts]) => ({ id, ts }));
+
+  return {
+    citacoes: citacoes.length ? citacoes : undefined,
+    deletedCitacoes: deletedCitacoes.length ? deletedCitacoes : undefined,
+  };
 }
 
 const normKey = (s?: string | null) =>

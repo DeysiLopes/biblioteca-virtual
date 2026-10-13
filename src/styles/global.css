@@ -88,6 +88,27 @@
 
   .statsRow{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px; font-size:12.5px; color:var(--ink2);}
   .statsRow b{color:var(--ink);}
+
+  /* Citação do dia — cartão aconchegante no topo da Estante */
+  .quote-of-day{
+    position:relative; margin:14px 0 4px; padding:18px 22px 14px 46px;
+    background:linear-gradient(160deg, oklch(0.32 0.045 340 / .9), var(--paper2));
+    border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:12px; cursor:pointer;
+    box-shadow:0 10px 30px -18px oklch(0 0 0 / .8);
+    transition:border-color .2s, transform .2s var(--ease);
+  }
+  .quote-of-day:hover{border-color:var(--accent); transform:translateY(-1px);}
+  .quote-of-day .qod-star{position:absolute; left:16px; top:16px; font-size:17px;}
+  .quote-of-day .qod-text{
+    margin:0; font:italic 500 18px/1.5 "Cormorant Garamond",serif; color:var(--ink);
+  }
+  .quote-of-day .qod-cite{margin:8px 0 0; font:700 12px "Nunito",sans-serif; color:var(--ink2);}
+  @media (max-width:640px){
+    .quote-of-day{padding:14px 16px 12px 40px;}
+    .quote-of-day .qod-text{font-size:16px;}
+  }
+
   .shelf-section + .shelf-section{margin-top:36px;}
   .shelf-section{scroll-margin-top:90px;}
   .shelf-section h2{display:flex; align-items:center; justify-content:space-between; gap:12px; font:700 24px "Cormorant Garamond",serif; color:var(--ink); margin:22px 8px 0;}
