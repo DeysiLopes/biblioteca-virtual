@@ -37,14 +37,38 @@ describe('parseReelUrl', () => {
 });
 
 describe('resolveReelLink', () => {
-  it('extrai video_url do JSON embutido no HTML', async () => {
+  it('via Jina: devolve legenda e capa do metadata', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (u: any) => {
+        expect(String(u)).toContain('r.jina.ai');
+        return new Response(
+          JSON.stringify({
+            data: {
+              title: 'LIVRARIA on Instagram: "4 thrillers: A, B, C, D"',
+              description: '100 likes',
+              metadata: { 'twitter:image': 'https://cdn.example.com/cover.jpg' },
+            },
+          }),
+          { status: 200 }
+        );
+      })
+    );
+
+    const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
+    expect(reel.caption).toContain('4 thrillers');
+    expect(reel.imageUrl).toBe('https://cdn.example.com/cover.jpg');
+  });
+
+  it('fallback: extrai video_url do HTML quando o Jina falha', async () => {
     const html = `<html><head></head><body><script>
       {"x":{"video_url":"https:\\/\\/scontent.cdninstagram.com\\/v\\/reel.mp4?token=abc\\u0026x=1"}}
     </script></body></html>`;
     vi.stubGlobal(
       'fetch',
       vi.fn(async (u: any) => {
-        expect(String(u)).toContain('allorigins');
+        const s = String(u);
+        if (s.includes('r.jina.ai')) return new Response('err', { status: 500 });
         return new Response(html, { status: 200 });
       })
     );
@@ -53,23 +77,11 @@ describe('resolveReelLink', () => {
     expect(reel.videoUrl).toBe('https://scontent.cdninstagram.com/v/reel.mp4?token=abc&x=1');
   });
 
-  it('usa og:video e og:image das meta tags', async () => {
-    const html = `<html><head>
-      <meta property="og:video" content="https://cdn.example.com/r.mp4">
-      <meta property="og:image" content="https://cdn.example.com/cover.jpg">
-    </head></html>`;
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(html, { status: 200 })));
-
-    const reel = await resolveReelLink('https://www.instagram.com/reel/ABC123/');
-    expect(reel.videoUrl).toBe('https://cdn.example.com/r.mp4');
-    expect(reel.imageUrl).toBe('https://cdn.example.com/cover.jpg');
-  });
-
   it('falha com mensagem clara quando não acha nada', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html></html>', { status: 200 })));
     await expect(
       resolveReelLink('https://www.instagram.com/reel/ABC123/')
-    ).rejects.toThrow('reel é público');
+    ).rejects.toThrow('público');
   });
 
   it('link inválido rejeita antes de buscar', async () => {

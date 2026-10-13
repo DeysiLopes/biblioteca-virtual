@@ -7,11 +7,11 @@ import {
 } from '../../core/business/llm/frames';
 import {
   extractBooksFromFrames,
+  extractBooksFromLink,
   loadLLMConfig,
   saveLLMConfig,
   LLMConfig,
 } from '../../core/business/llm/extract';
-import { extractFramesFromReelLink } from '../../core/business/llm/reel-link';
 import {
   ExtractedFrame,
   LLMProvider,
@@ -91,11 +91,25 @@ export const ReelScanner: React.FC<ReelScannerProps> = ({ books, onAdd }) => {
     setError(null);
     setNote(null);
     setFetchingLink(true);
+    setPhase('scanning');
     try {
-      const result = await extractFramesFromReelLink(url);
+      await saveLLMConfig(config);
+      const result = await extractBooksFromLink(config, url);
       setFrames(result.frames);
       setNote(result.note ?? null);
-      setPhase('idle');
+      if (!result.books.length) {
+        setError('A IA não identificou nenhum livro nesse link. Tenta outro reel ou envia prints.');
+        setPhase('idle');
+        return;
+      }
+      setCandidates(
+        result.books.map((b) => ({
+          ...b,
+          duplicate: isDuplicate(b.title),
+          checked: !isDuplicate(b.title),
+        }))
+      );
+      setPhase('review');
     } catch (err: any) {
       setError(err?.message || 'Falha ao buscar o link.');
       setPhase('idle');
@@ -273,7 +287,7 @@ export const ReelScanner: React.FC<ReelScannerProps> = ({ books, onAdd }) => {
           style={accentBtn}
           disabled={fetchingLink || !linkUrl.trim()}
         >
-          {fetchingLink ? '⏳ Buscando...' : '🎬 Buscar reel'}
+          {fetchingLink ? '⏳ Analisando...' : '🎬 Escanear reel'}
         </button>
       </form>
       <p style={{ margin: '-8px 0 0', fontSize: 11, color: 'var(--ink2)' }}>
@@ -342,7 +356,7 @@ export const ReelScanner: React.FC<ReelScannerProps> = ({ books, onAdd }) => {
         </div>
       )}
 
-      {frames.length > 0 && phase !== 'done' && (
+      {frames.length > 0 && (phase === 'idle' || phase === 'frames' || phase === 'scanning') && (
         <div>
           <button
             type="button"

@@ -1,4 +1,4 @@
-import { BOOK_EXTRACTION_PROMPT } from './prompt';
+import { BOOK_EXTRACTION_PROMPT, CAPTION_EXTRACTION_PROMPT } from './prompt';
 import { ExtractedFrame, LLMProvider, LLM_PROVIDERS } from './types';
 
 const TIMEOUT_MS = 60000;
@@ -29,7 +29,7 @@ async function assertOk(res: Response, provider: string): Promise<void> {
   throw new Error(`${provider}: ${res.status} — ${detail}`);
 }
 
-async function callGemini(apiKey: string, frames: ExtractedFrame[]): Promise<string> {
+async function callGemini(apiKey: string, prompt: string, frames: ExtractedFrame[]): Promise<string> {
   const model = LLM_PROVIDERS.find((p) => p.id === 'gemini')!.model;
   const res = await timedFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -40,7 +40,7 @@ async function callGemini(apiKey: string, frames: ExtractedFrame[]): Promise<str
         contents: [
           {
             parts: [
-              { text: BOOK_EXTRACTION_PROMPT },
+              { text: prompt },
               ...frames.map((f) => ({
                 inline_data: { mime_type: 'image/jpeg', data: toBase64(f.dataUrl) },
               })),
@@ -59,7 +59,7 @@ async function callGemini(apiKey: string, frames: ExtractedFrame[]): Promise<str
   return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
-async function callOpenAI(apiKey: string, frames: ExtractedFrame[]): Promise<string> {
+async function callOpenAI(apiKey: string, prompt: string, frames: ExtractedFrame[]): Promise<string> {
   const model = LLM_PROVIDERS.find((p) => p.id === 'openai')!.model;
   const res = await timedFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -75,7 +75,7 @@ async function callOpenAI(apiKey: string, frames: ExtractedFrame[]): Promise<str
         {
           role: 'user',
           content: [
-            { type: 'text', text: `${BOOK_EXTRACTION_PROMPT}\nReturn JSON: {"books": [...]}` },
+            { type: 'text', text: `${prompt}\nReturn JSON: {"books": [...]}` },
             ...frames.map((f) => ({
               type: 'image_url',
               image_url: { url: f.dataUrl, detail: 'low' },
@@ -99,7 +99,7 @@ async function callOpenAI(apiKey: string, frames: ExtractedFrame[]): Promise<str
   }
 }
 
-async function callAnthropic(apiKey: string, frames: ExtractedFrame[]): Promise<string> {
+async function callAnthropic(apiKey: string, prompt: string, frames: ExtractedFrame[]): Promise<string> {
   const model = LLM_PROVIDERS.find((p) => p.id === 'anthropic')!.model;
   const res = await timedFetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -126,7 +126,7 @@ async function callAnthropic(apiKey: string, frames: ExtractedFrame[]): Promise<
                 data: toBase64(f.dataUrl),
               },
             })),
-            { type: 'text', text: BOOK_EXTRACTION_PROMPT },
+            { type: 'text', text: prompt },
           ],
         },
       ],
@@ -138,7 +138,7 @@ async function callAnthropic(apiKey: string, frames: ExtractedFrame[]): Promise<
   return blocks.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
 }
 
-const CALLERS: Record<LLMProvider, (apiKey: string, frames: ExtractedFrame[]) => Promise<string>> = {
+const CALLERS: Record<LLMProvider, (apiKey: string, prompt: string, frames: ExtractedFrame[]) => Promise<string>> = {
   gemini: callGemini,
   openai: callOpenAI,
   anthropic: callAnthropic,
@@ -150,5 +150,19 @@ export function callLLM(
   apiKey: string,
   frames: ExtractedFrame[]
 ): Promise<string> {
-  return CALLERS[provider](apiKey, frames);
+  return CALLERS[provider](apiKey, BOOK_EXTRACTION_PROMPT, frames);
+}
+
+/**
+ * Envia a legenda do post ao provedor — o texto é o sinal principal e os
+ * frames (opcionais) entram como contexto extra, ex.: a capa do reel.
+ */
+export function callLLMCaption(
+  provider: LLMProvider,
+  apiKey: string,
+  caption: string,
+  frames: ExtractedFrame[] = []
+): Promise<string> {
+  const prompt = `${CAPTION_EXTRACTION_PROMPT}\n\nPost caption/description:\n"""\n${caption.slice(0, 6000)}\n"""`;
+  return CALLERS[provider](apiKey, prompt, frames);
 }
