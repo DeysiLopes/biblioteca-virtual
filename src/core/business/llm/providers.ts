@@ -144,13 +144,21 @@ const CALLERS: Record<LLMProvider, (apiKey: string, prompt: string, frames: Extr
   anthropic: callAnthropic,
 };
 
-/** Envia os frames ao provedor escolhido e devolve o texto cru da resposta. */
+/**
+ * Envia os frames ao provedor escolhido e devolve o texto cru da resposta.
+ * A legenda (quando existe) vai junto como contexto: ajuda a confirmar
+ * grafia de títulos/autores que os frames mostram só em parte.
+ */
 export function callLLM(
   provider: LLMProvider,
   apiKey: string,
-  frames: ExtractedFrame[]
+  frames: ExtractedFrame[],
+  caption?: string
 ): Promise<string> {
-  return CALLERS[provider](apiKey, BOOK_EXTRACTION_PROMPT, frames);
+  const ctx = caption?.trim()
+    ? `\n\nThe post's caption/description — use it to confirm exact spellings of titles and authors:\n"""\n${caption.slice(0, 3000)}\n"""`
+    : '';
+  return CALLERS[provider](apiKey, BOOK_EXTRACTION_PROMPT + ctx, frames);
 }
 
 /**

@@ -2,8 +2,8 @@ import { ExtractedFrame } from './types';
 
 const MAX_DIM = 768;
 const JPEG_QUALITY = 0.8;
-/** quantos frames tentar extrair de um vídeo */
-const TARGET_FRAMES = 8;
+/** quantos frames tentar extrair de um vídeo — cobertura pra livros mostrados por poucos segundos */
+const TARGET_FRAMES = 12;
 /** ignora os primeiros/últimos 8% — vinheta e tela final raramente têm capa */
 const EDGE_SKIP = 0.08;
 

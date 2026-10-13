@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { parseScannedBooks } from '../core/business/llm/parse';
 import { callLLM } from '../core/business/llm/providers';
 import { extractBooksFromLink } from '../core/business/llm/extract';
+import * as reelLink from '../core/business/llm/reel-link';
 import { ExtractedFrame } from '../core/business/llm/types';
 
 const frame: ExtractedFrame = { dataUrl: 'data:image/jpeg;base64,QUJD', timeSec: 3 };
@@ -161,7 +162,7 @@ describe('extractBooksFromLink — legenda resolve sem IA', () => {
     expect(llmCalls).toHaveLength(0);
   });
 
-  it('legenda sem lista → avisa no onNote e cai pro LLM de texto', async () => {
+  it('legenda sem lista → tenta o vídeo/visão antes e cai pro LLM de texto', async () => {
     const notes: string[] = [];
     const spy = vi.fn(async (u: any) => {
       const s = String(u);
@@ -182,8 +183,45 @@ describe('extractBooksFromLink — legenda resolve sem IA', () => {
       'https://www.instagram.com/reel/X/',
       (n) => notes.push(n)
     );
-    expect(notes[0]).toContain('scan mais minucioso');
+    // vídeo é tentado primeiro; sem mídia utilizável, cai pro texto da legenda
+    expect(notes[0]).toContain('Baixando o vídeo');
+    expect(notes[1]).toContain('legenda');
     expect(res.books[0].title).toBe('Achado');
+    expect(res.note).toContain('legenda');
+  });
+
+  it('vídeo disponível → frames + legenda de contexto numa chamada de visão só', async () => {
+    const spy = vi.fn(async (u: any) => {
+      const s = String(u);
+      if (s.includes('r.jina.ai')) return jinaResponse('my fave fantasy books #bookstagram');
+      if (s.includes('googleapis'))
+        return new Response(
+          JSON.stringify({
+            candidates: [
+              { content: { parts: [{ text: '[{"title":"DoVídeo","author":"Autor X"}]' }] } },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      return new Response('x', { status: 500 });
+    });
+    vi.stubGlobal('fetch', spy);
+    const framesSpy = vi
+      .spyOn(reelLink, 'extractFramesFromReel')
+      .mockResolvedValue({ frames: [frame, { ...frame, timeSec: 9 }] });
+
+    const res = await extractBooksFromLink(
+      { provider: 'gemini', apiKey: 'k' },
+      'https://www.instagram.com/reel/X/'
+    );
+
+    expect(framesSpy).toHaveBeenCalled();
+    expect(res.books[0].title).toBe('DoVídeo');
+    // a legenda viajou como contexto na chamada de visão (texto do prompt)
+    const llmCall = spy.mock.calls.find(([u]: any) => String(u).includes('googleapis'));
+    const body = JSON.parse((llmCall![1] as any).body);
+    expect(body.contents[0].parts[0].text).toContain('my fave fantasy books');
+    framesSpy.mockRestore();
   });
 
   it('sem livros na legenda E sem chave → erro orienta a configurar', async () => {

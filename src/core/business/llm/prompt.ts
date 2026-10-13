@@ -4,7 +4,7 @@
  */
 export const BOOK_EXTRACTION_PROMPT = `You are looking at frames extracted from a book-recommendation short video (reel/short/tiktok) or screenshots.
 
-Identify every DISTINCT book shown or clearly mentioned in these images. Book covers are the main signal — read the title and author on the cover/spine when visible.
+Identify every DISTINCT book shown or clearly mentioned in these images. Book covers are the main signal — read the title and author on the cover/spine when visible. Creators often overlay the book's name as on-screen captions/subtitles — read them too; they usually state title and author exactly.
 
 Rules:
 - Return ONLY a JSON array, no markdown, no commentary.

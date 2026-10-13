@@ -113,44 +113,53 @@ export async function extractBooksFromLink(
     );
   }
 
-  // 2) legenda existe mas sem lista clara → LLM lê o texto (com a capa junto)
-  if (reel.caption?.trim()) {
-    onNote?.('Não encontrei os livros listados na legenda — rodando um scan mais minucioso com a IA…');
-    const raw = await callLLMCaption(config.provider, config.apiKey, reel.caption, frames);
-    const books = parseScannedBooks(raw);
-    if (books.length) {
-      return { books, frames, note: 'A legenda não tinha a lista — a IA extraiu do texto.' };
-    }
-    // LLM de texto não achou → tenta a imagem/vídeo abaixo
-  } else {
-    onNote?.('Esse post não tem legenda útil — a IA vai analisar a imagem/vídeo…');
-  }
-
-  // 3) vídeo real do reel (quando acessível) + capa → LLM de visão.
-  //    Tenta o vídeo mesmo com capa disponível: os livros podem só aparecer
-  //    nos frames, nunca na capa.
+  // 2) vídeo real → frames espaçados do reel inteiro. É a fonte mais rica:
+  //    cada livro aparece na tela e criadores costumam legendar o nome.
+  //    A capa já está em `frames` e a legenda vai junto como contexto.
   let mediaNote: string | undefined;
-  if (reel.videoUrl || !frames.length) {
+  if (reel.videoUrl) {
     onNote?.('Baixando o vídeo do reel para a IA ler os frames…');
     try {
       const got = await extractFramesFromReel(reel);
       frames.push(...got.frames);
       mediaNote = got.note;
     } catch {
-      // segue só com a capa, se ela foi baixada
+      // sem vídeo — segue com a capa/legenda abaixo
+      mediaNote = 'Não consegui baixar o vídeo — a IA usou só a capa do post.';
     }
   }
+
+  // 3) LLM de visão sobre tudo que conseguimos (frames do vídeo e/ou capa)
+  if (frames.length) {
+    const raw = await callLLM(config.provider, config.apiKey, frames, reel.caption);
+    const books = parseScannedBooks(raw);
+    if (books.length) {
+      return {
+        books,
+        frames,
+        note:
+          mediaNote ??
+          (reel.videoUrl
+            ? 'A IA leu os frames do vídeo.'
+            : reel.caption
+              ? 'Legenda sem lista — a IA leu a imagem do post.'
+              : 'Sem legenda — a IA leu a imagem do post.'),
+      };
+    }
+  }
+
+  // 4) visão não achou nada → última chance: LLM de texto sobre a legenda
+  if (reel.caption?.trim()) {
+    onNote?.('A IA não achou livros nas imagens — tentando extrair do texto da legenda…');
+    const raw = await callLLMCaption(config.provider, config.apiKey, reel.caption, frames);
+    const books = parseScannedBooks(raw);
+    if (books.length) {
+      return { books, frames, note: 'A IA extraiu os livros do texto da legenda.' };
+    }
+  }
+
   if (!frames.length) {
     throw new Error('Não consegui ler nada desse link. Tenta enviar o vídeo/prints.');
   }
-  const books = parseScannedBooks(await callLLM(config.provider, config.apiKey, frames));
-  return {
-    books,
-    frames,
-    note:
-      mediaNote ??
-      (reel.caption
-        ? 'Legenda sem lista — a IA leu a imagem do post.'
-        : 'Sem legenda — a IA leu a imagem do post.'),
-  };
+  throw new Error('A IA não identificou livros nesse link. Tenta enviar o vídeo/prints.');
 }
