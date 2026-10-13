@@ -71,4 +71,4 @@ Os scripts `scripts/test-*.cjs` com Chromium e extração de JS inline pertencem
 - `vite-plugin-pwa` em `vite.config.ts` gera o service worker e o precache no build, com `registerType: 'autoUpdate'`. Não criar/editar um `sw.js` manual nem incrementar o antigo `VERSION = "bib-vN"`.
 - Preserve a base `/biblioteca-virtual/`, o basename do router, `start_url`/`scope` do manifest e o redirecionamento de `public/404.html` para GitHub Pages. Se mudar a base, revise esses pontos juntos.
 - Não editar arquivos gerados em `dist/`; faça mudanças nas fontes e gere outro build. Os ícones e o redirecionamento estáticos ficam em `public/`.
-- `npm run deploy` executa build e publica `dist/` na branch `gh-pages`. Só executar publicação, commit ou push quando solicitado; validar o build antes de publicar.
+- O deploy é feito pelo GitHub Actions em push na `main` (`.github/workflows/react-vite.yml`): build no CI + `actions/deploy-pages`. Não existe publicação local — o antigo script `deploy` (gh-pages) foi removido de propósito, pois usava o `.env` local e poderia vazar chaves no bundle. Só executar commit/push quando solicitado; validar o build antes.
