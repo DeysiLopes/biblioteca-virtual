@@ -191,7 +191,7 @@ describe('extractBooksFromLink — legenda resolve sem IA', () => {
   });
 
   it('vídeo disponível → frames + legenda de contexto numa chamada de visão só', async () => {
-    const spy = vi.fn(async (u: any) => {
+    const spy = vi.fn(async (u: any, _init?: any) => {
       const s = String(u);
       if (s.includes('r.jina.ai')) return jinaResponse('my fave fantasy books #bookstagram');
       if (s.includes('googleapis'))
